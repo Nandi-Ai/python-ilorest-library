@@ -27,9 +27,9 @@ import redfish
 
 # When running remotely connect using the iLO address, iLO account name,
 # and password to send https requests
-SYSTEM_URL = "https://10.0.0.100"
+SYSTEM_URL = "https://febm-probe2.ilo.ps.radcom.co.il"
 LOGIN_ACCOUNT = "admin"
-LOGIN_PASSWORD = "password"
+LOGIN_PASSWORD = "Radmin1234"
 
 # Create a REST object
 REST_OBJ = redfish.LegacyRestClient(base_url=SYSTEM_URL, username=LOGIN_ACCOUNT,\

@@ -1,2 +1,3 @@
 certifi
-redfish
+python-ilorest-library
+redfish==3.0.1

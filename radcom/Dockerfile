@@ -4,11 +4,12 @@ WORKDIR /app
 
 RUN apt-get update -y
 
-RUN apt-get install -y python-pip python-dev build-essential
+RUN apt-get install -y vim
 
-COPY requirements.txt requirements.txt
 
-RUN pip3 install -r requirements.txt
+ADD requirements.txt requirements.txt
+
+RUN pip2 install -r requirements.txt
 
 
 
