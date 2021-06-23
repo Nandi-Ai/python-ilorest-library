@@ -8,6 +8,7 @@ from get_resource_directory import get_resource_directory
 
 
 
+
 def get_SmartArray_LogicalDrives(_redfishobj):
 
     smartstorage_response = []
@@ -27,19 +28,27 @@ def get_SmartArray_LogicalDrives(_redfishobj):
             if '#Bios.' in instance['@odata.type']:
                 bios_uri = instance['@odata.id']
                 bios_resp = _redfishobj.get(bios_uri).obj
-                print()
                 #print(json.dumps(bios_resp['Attributes'], indent=4, sort_keys=True))
 
-                AttributesElements = ['ExtendedMemTest', 'InternalSDCardSlot','AutoPowerOn'\
-                                      ,'PostF1Prompt', 'BootMode','FlexLom1Enable','RedundantPowerSupply','PciSlot1Enable'\
-                                      ,'EmbVideoConnection','ThermalConfig']
-                for x in AttributesElements:
-                    res = bios_resp['Attributes'][x]
-                    #disabled_bios = _redfishobj.get(res).obj['Members']
-                    #print(json.dumps(res, indent=4, sort_keys=True))
-                    print(x,res)
+                AttributesElements = {'ExtendedMemTest': 'Disabled', 'InternalSDCardSlot': 'Disabled',
+                                      'AutoPowerOn': 'PowerOn' \
+                                    , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'LegacyBios', 'FlexLom1Enable': 'Auto', \
+                                      'RedundantPowerSupply': 'HighEfficiencyAuto',
+                                      'PciSlot1Enable': 'HighEfficiencyAuto' \
+                                    , 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
 
-
+                # body = {'Attributes': {bios_property: property_value}}
+                y = bios_resp['Attributes'].items()
+                x = AttributesElements.items()
+                # res = [y[key] for key in AttributesElements]
+                for attribute, val in y:
+                    # print(str(attribute), str(val))
+                    for attribute2, val2 in x:
+                        if (attribute == attribute2) and (val == val2):
+                            print(str(attribute), str(val))
+                        elif (attribute == attribute2) and (val != val2):
+                            _redfishobj.val = val2
+                            print(str(attribute), str(val))
 
 
 
