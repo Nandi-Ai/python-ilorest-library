@@ -126,6 +126,8 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
         systems_members_response = _redfishobj.get(systems_members_uri)
         smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
                                                                 ['SmartStorage']['@odata.id']
+        smart_storage_config_uri = systems_members_response.obj.Oem.Hpe.Links\
+                                                                ['SmartStorage']['@odata.id']
         smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links \
             ['ArrayControllers']['@odata.id']
         smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
