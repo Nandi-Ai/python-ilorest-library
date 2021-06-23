@@ -12,13 +12,20 @@ def get_logicalvolume_actions(volumeIds):
         "DataGuard": "Permissive"
     }
     for id in volumeIds:
-        item = {
-            "Actions": [{"Action": "LogicalDriveDelete"}]
+        action = {
+            "Actions": "[Action: LogicalDriveDelete]"
         }
-        item['VolumeUniqueIdentifier'] = id
-        params['LogicalDrives'].append(item)
-
-    return params
+        # item['VolumeUniqueIdentifier'] = id
+        # params['LogicalDrives'].append(action)
+    body = dict()
+    body["LogicalDrives"] = dict()
+    body["LogicalDrives"]["Actions"] = dict()
+    body["LogicalDrives"]["Actions"]["Action"] = "LogicalDriveDelete"
+    body["LogicalDrives"]["VolumeUniqueIdentifier"] = str(volumeIds[0])
+    body["DataGuard"] = "Permissive"
+ 
+    print(body)
+    return body
 
 
 def change_temporary_boot_order(_redfishobj, boottarget):
@@ -142,9 +149,9 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
                     print(drive_data["VolumeUniqueIdentifier"])
 
     body = get_logicalvolume_actions(drive_ids)
-    print(drive_ids)
+    print(body)
     # res = _redfishobj.put("https://febm-probe3.ilo.ps.radcom.co.il/redfish/v1/Systems/1/SmartStorageConfig/Settings/", )
-    resp = _redfishobj.patch(bios_settings_uri, body)
+    # resp = _redfishobj.patch(bios_settings_uri, body)
 
 
 
