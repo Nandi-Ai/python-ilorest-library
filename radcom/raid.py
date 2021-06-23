@@ -150,8 +150,12 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
                     drive_ids.append(drive_data["VolumeUniqueIdentifier"])
                     print(drive_data["VolumeUniqueIdentifier"])
+            elif '#SmartStorageConfig.' in instance['@odata.type']:
+                   smartstorage_uri_config = instance['@odata.id']
+
 
     body = get_logicalvolume_actions(drive_ids)
+    print(smartstorage_uri_config)
     print(body)
     # res = _redfishobj.put("https://febm-probe3.ilo.ps.radcom.co.il/redfish/v1/Systems/1/SmartStorageConfig/Settings/", )
     # resp = _redfishobj.patch(bios_settings_uri, body)
