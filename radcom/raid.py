@@ -28,20 +28,23 @@ def get_logicalvolume_actions(volumeIds):
     return body
 
 
-def create_logicaldrive_json(size, locations):
-
+def create_logicaldrive_json(StorageTotalSize, locations):
+    numberOfDisks = len(locations)
+    diskSize = StorageTotalSize / numberOfDisks
     if len(locations) is 2:
+        totalStorage = diskSize
         raid_type = 'Raid1'
     elif len(locations) > 3:
+        totalStorage = (numberOfDisks - 1) *  diskSize
         raid_type = 'Raid5'
     elif len(locations) < 2:
         print("ERROR!")
     body = dict()
-    body['CapacityGiB'] = 558
+    body['CapacityGiB'] = totalStorage
     body['Raid'] = raid_type
-    body['StripSizeBytes'] = size
-    source = string.ascii_letters + string.digits
-    body['LogicalDriveName'] = 'My'+''.join((random.choice(source) for i in range(3)))
+    body['StripSizeBytes'] = 262144
+    source = string.digits
+    body['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(source) for i in range(3)))
     body['DataDrives'] = list()
     for location in locations:
         body['DataDrives'].append(location)
