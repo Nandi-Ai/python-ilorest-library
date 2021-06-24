@@ -353,7 +353,7 @@ if __name__ == "__main__":
     # delete_SmartArray_LogicalDrives(REDFISHOBJ)
     createLogicalDrive(REDFISHOBJ)
     print("")
-    ## reboot_server(REDFISHOBJ)
+    # reboot_server(REDFISHOBJ)
 
 
     REDFISHOBJ.logout()
