@@ -1,3 +1,4 @@
+import re
 import sys
 import json
 from redfish import RedfishClient
@@ -5,10 +6,13 @@ from redfish.rest.v1 import ServerDownOrUnreachableError
 
 from get_resource_directory import get_resource_directory
 
+
 def change_bios_setting(_redfishobj, bios_property, property_value):
+
 
     bios_uri = None
     bios_data = None
+    global bios_res
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
         #if we do not have a resource directory or want to force it's non use to find the
@@ -19,6 +23,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
         systems_members_response = _redfishobj.get(systems_members_uri)
         bios_uri = systems_members_response.obj['Bios']['@odata.id']
         bios_data = _redfishobj.get(bios_uri)
+
     else:
         #Use Resource directory to find the relevant URI
         for instance in resource_instances:
@@ -26,7 +31,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
                 bios_uri = instance['@odata.id']
                 bios_data = _redfishobj.get(bios_uri)
                 break
-
+    bios_res = bios_data.obj
     if bios_data:
         print("\n\nShowing BIOS attributes before changes:\n\n")
         print(json.dumps(bios_data.dict, indent=4, sort_keys=True))
@@ -76,7 +81,7 @@ if __name__ == "__main__":
     LOGIN_ACCOUNT = "admin"
     LOGIN_PASSWORD = "Radmin1234"
 
-    #BIOS_PASSWORD = ""
+    BIOS_PASSWORD = ""
     #provide the attribute name and the associated attribute value. Note: some, values may
     #be containers (arrays or dictionaries) so keep this in mind.
     #ATTRIBUTE = "AdminName"
@@ -96,15 +101,27 @@ if __name__ == "__main__":
         sys.stderr.write("ERROR: server not reachable or does not support RedFish.\n")
         sys.exit()
 
-    Att_bios = {'ExtendedMemTest': 'Disabled', 'InternalSDCardSlot': 'Disabled',
-                          'AutoPowerOn': 'PowerOn' \
-        , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'LegacyBios', 'FlexLom1Enable': 'Auto', \
-                          'RedundantPowerSupply': 'HighEfficiencyAuto',
-                          'PciSlot1Enable': 'HighEfficiencyAuto' \
-        , 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
+    Att_bios = {'ExtendedMemTest': 'Disabled', 'InternalSDCardSlot': 'Disabled','AutoPowerOn': 'PowerOn' \
+                , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'LegacyBios', 'FlexLom1Enable': 'Auto', \
+                'RedundantPowerSupply': 'HighEfficiencyAuto', 'PciSlot1Enable': 'HighEfficiencyAuto' \
+                , 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
+
+
+
     AttributesElements = Att_bios.items()
     for ATTRIBUTE, ATTRIBUTE_VAL in AttributesElements:
-        print(str(ATTRIBUTE), str(ATTRIBUTE_VAL))
+        print("--------------------")
+        print(ATTRIBUTE)
+        print("--------------------")
+        change_bios_setting(REDFISHOBJ, ATTRIBUTE, ATTRIBUTE_VAL)
 
-    change_bios_setting(REDFISHOBJ, ATTRIBUTE, ATTRIBUTE_VAL)
+    Nics = []
+    for val, att in bios_res['Attributes'].items():
+        if re.match(r'^Slot\dNic*', val):
+            Nics.append(val)
+    for nic in Nics:
+        change_bios_setting(REDFISHOBJ, nic, "Disabled")
+
+
+
     REDFISHOBJ.logout()

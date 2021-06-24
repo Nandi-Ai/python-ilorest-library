@@ -39,6 +39,7 @@ def get_SmartArray_LogicalDrives(_redfishobj):
 
                 # body = {'Attributes': {bios_property: property_value}}
                 y = bios_resp['Attributes'].items()
+                print(y)
                 x = AttributesElements.items()
                 # res = [y[key] for key in AttributesElements]
                 for attribute, val in y:
