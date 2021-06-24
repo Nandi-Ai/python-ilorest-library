@@ -28,21 +28,31 @@ def get_logicalvolume_actions(volumeIds):
     return body
 
 
-def create_logicaldrive_json(_redfishobj, disks, size, location):
+def create_logicaldrive_json(size, locations):
+
+    if len(locations) is 2:
+        raid_type = 'Raid1'
+    elif len(locations) > 3:
+        raid_type = 'Raid5'
+    elif len(locations) < 2:
+        print("ERROR!")
     body = dict()
     body['CapacityGiB'] = 558
-    body['Raid'] = 'Raid0'
+    body['Raid'] = raid_type
     body['StripSizeBytes'] = size
     source = string.ascii_letters + string.digits
-    body['LogicalDriveName'] = ''.join((random.choice(source) for i in range(5)))
+    body['LogicalDriveName'] = 'My'+''.join((random.choice(source) for i in range(3)))
     body['DataDrives'] = list()
-    for disk in disks:
-        body['DataDrives'].append(disk)
+    for location in locations:
+        body['DataDrives'].append(location)
     body['Accelerator'] = 'ControllerCache'
 
     print(json.dumps(body, indent=4))
 
-    resp = _redfishobj.put(smartstorage_uri_config, body)
+#     resp = _redfishobj.put(smartstorage_uri_config, body)
+
+
+
 def createLogicalDrive(_redfishobj):
 
     resource_instances = get_resource_directory(_redfishobj)
@@ -60,7 +70,8 @@ def createLogicalDrive(_redfishobj):
             ['ArrayControllers']['@odata.id']
         smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
     else:
-        drive_ids = []
+        drive_locations = []
+        totalStorage = 0
         for instance in resource_instances:
             #Use Resource directory to find the relevant URI
             if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
@@ -77,7 +88,11 @@ def createLogicalDrive(_redfishobj):
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
                     # drive_ids.append(drive_data["VolumeUniqueIdentifier"])
                     print(drive_data["Location"])
-                    print(drive_data["CapacityGB"])
+                    drive_locations.append(str(drive_data["Location"]))
+                    totalStorage += drive_data["CapacityGB"]
+                print(totalStorage)
+                print(drive_locations)
+                create_logicaldrive_json(totalStorage, drive_locations)
             elif '#SmartStorageConfig.' in instance['@odata.type']:
                    smartstorage_uri_config = instance['@odata.id']
                    # print(smartstorage_uri_config)
