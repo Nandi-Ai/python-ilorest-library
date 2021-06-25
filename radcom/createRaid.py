@@ -6,27 +6,32 @@ from redfish.rest.v1 import ServerDownOrUnreachableError
 from get_resource_directory import get_resource_directory
 
 
+
+# Assemble request body to delete logical volume
+# 
+# Args:
+#       volumeIds (list<str>): logical volume unique identifiers
+# Returns:
+#       Request body, dictionary
+#
 def get_logicalvolume_actions(volumeIds):
-    params = {
-        "LogicalDrives": [],
-        "DataGuard": "Permissive"
-    }
-    for id in volumeIds:
-        action = {
-            "Actions": "[Action: LogicalDriveDelete]"
-        }
-        # item['VolumeUniqueIdentifier'] = id
-        # params['LogicalDrives'].append(action)
     body = dict()
     body["LogicalDrives"] = dict()
     body["LogicalDrives"]["Actions"] = dict()
     body["LogicalDrives"]["Actions"]["Action"] = "LogicalDriveDelete"
     body["LogicalDrives"]["VolumeUniqueIdentifier"] = str(volumeIds[0])
     body["DataGuard"] = "Permissive"
- 
-    print(body)
+
     return body
 
+
+# Assemble request body to create logical drive 
+# 
+# Args:
+#       disks(list<dict): list of disks
+# Returns:
+#       Request body, dictionary
+#
 def create_logicaldrive_json(Disks):
     body = dict()
     body['DataDrives'] = list()
@@ -56,6 +61,14 @@ def create_logicaldrive_json(Disks):
     return body
 
 
+
+# Creates logical drive 
+# 
+# Args:
+#       _redfishobj(RedfishClient): redfish client object
+# Returns:
+#       Nothing
+#
 def createLogicalDrive(_redfishobj):
 
     resource_instances = get_resource_directory(_redfishobj)
@@ -116,6 +129,14 @@ def createLogicalDrive(_redfishobj):
             print("error")
 
 
+# Changes boot order
+# 
+# Args:
+#       _redfishobj(RedfishClient): redfish client object
+#       boottarget(str): temporary boot device
+# Returns:
+#       Nothing
+#
 def change_temporary_boot_order(_redfishobj, boottarget):
 
     systems_members_uri = None
@@ -158,6 +179,13 @@ def change_temporary_boot_order(_redfishobj, boottarget):
 
 
 
+# Reboots server
+#
+# Args:
+#       _redfishobj(RedfishClient): redfish client object
+# Returns:
+#       Nothing
+#
 def reboot_server(_redfishobj):
 
     systems_members_response = None
@@ -198,6 +226,14 @@ def reboot_server(_redfishobj):
             print("Success!\n")
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
+
+# Deletes logical drive
+#
+# Args:
+#       _redfishobj(RedfishClient): redfish client object
+# Returns:
+#       HTTP status code
+#
 def delete_SmartArray_LogicalDrives(_redfishobj):
 
     smartstorage_response = []
@@ -252,8 +288,13 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
     return resp.status
 
 
-
-
+# Gets logical drives
+#
+# Args:
+#       _redfishobj(RedfishClient): redfish client object
+# Returns:
+#       Nothing
+#
 def get_SmartArray_Drives(_redfishobj):
 
     smartstorage_response = []
@@ -289,18 +330,30 @@ def get_SmartArray_Drives(_redfishobj):
                 for drives in physicaldrives_resp.dict['Members']:
                     sys.stdout.write("\t An associated Physical drive: %s\n" % drives)
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
-                    #print(json.dumps(drive_data, indent=4, sort_keys=True))
-                if logicaldrives_resp.dict['Members']:
-                    sys.stderr.write("\tLogical drives are available for this controller.\nDeleting..")
-                    del_res = delete_SmartArray_LogicalDrives(REDFISHOBJ)
-                    if del_res == 200:
-                        print("success")
-                    else:
-                        print("fail, couldn't delete logical drives.")
-                        exit(1)
+                    print(json.dumps(drive_data, indent=4, sort_keys=True))
+                    
+                # WARNING    
+                # commented, because I think it's mistake, function that lists drives
+                # shouldn't delete them
+                #  
+                # if logicaldrives_resp.dict['Members']:
+                #     sys.stderr.write("\tLogical drives are available for this controller.\nDeleting..")
+                #     del_res = delete_SmartArray_LogicalDrives(REDFISHOBJ)
+                #     if del_res == 200:
+                #         print("success")
+                #     else:
+                #         print("fail, couldn't delete logical drives.")
+                #         exit(1)
 
 
-
+# Gets encryption settings for smart storage array controller 
+#
+# Args:
+#       _redfishobj(RedfishClient): redfish client object
+#       desired_properties(list<str>): properties for encryption settings
+# Returns:
+#       Nothing
+#
 def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
 
     smartstorage_response = []
