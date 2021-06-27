@@ -1,4 +1,4 @@
-
+import argparse
 import sys, json, re, random, string
 from redfish import RedfishClient
 from redfish.rest.v1 import ServerDownOrUnreachableError
