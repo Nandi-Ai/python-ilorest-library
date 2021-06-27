@@ -7,6 +7,8 @@ from get_resource_directory import get_resource_directory
 
 
 def get_logicalvolume_actions(volumeIds):
+    # change bios properties in the action settings
+
     params = {
         "LogicalDrives": [],
         "DataGuard": "Permissive"
@@ -29,6 +31,8 @@ def get_logicalvolume_actions(volumeIds):
 
 
 def create_logicaldrive_json(StorageTotalSize, locations):
+    # creating logical drive disks with sorting the disks for which raid
+
     numberOfDisks = len(locations)
     diskSize = StorageTotalSize / numberOfDisks
     if len(locations) is 2:
@@ -57,6 +61,7 @@ def create_logicaldrive_json(StorageTotalSize, locations):
 
 
 def createLogicalDrive(_redfishobj):
+    # Creates a new logical drive on the selected controller
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
@@ -106,6 +111,7 @@ def createLogicalDrive(_redfishobj):
 
 
 def change_temporary_boot_order(_redfishobj, boottarget):
+    #getting response boot
 
     systems_members_uri = None
     systems_members_response = None
@@ -148,6 +154,7 @@ def change_temporary_boot_order(_redfishobj, boottarget):
 
 
 def reboot_server(_redfishobj):
+    # Reboot a server
 
     systems_members_response = None
 
@@ -188,6 +195,7 @@ def reboot_server(_redfishobj):
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
 def delete_SmartArray_LogicalDrives(_redfishobj):
+    #deleting the logical drives
 
     smartstorage_response = []
     smartarraycontrollers = dict()
@@ -244,6 +252,7 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
 
 
 def get_SmartArray_LogicalDrives(_redfishobj):
+    #List all logical drives associated with a smart array controller
 
     smartstorage_response = []
     smartarraycontrollers = dict()
@@ -279,6 +288,7 @@ def get_SmartArray_LogicalDrives(_redfishobj):
                     print(json.dumps(drive_data, indent=4, sort_keys=True))
 
 def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
+    #Obtain Smart Array controller encryption property data
 
     smartstorage_response = []
     smartarraycontrollers = dict()

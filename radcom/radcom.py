@@ -8,7 +8,8 @@ from get_resource_directory import get_resource_directory
 
 
 def change_bios_setting(_redfishobj, bios_property, property_value):
-
+    #change bios properties in the action settings
+    #Alter one ore more BIOS attributes
     bios_uri = None
     bios_data = None
     global bios_res
@@ -67,6 +68,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
 
 
 def get_logicalvolume_actions(volumeIds):
+    #getting the logical volumes
     params = {
         "LogicalDrives": [],
         "DataGuard": "Permissive"
@@ -88,6 +90,7 @@ def get_logicalvolume_actions(volumeIds):
     return body
 
 def create_logicaldrive_json(Disks):
+    # creating logical drive disks with sorting the disks for which raid
     body = dict()
     body['DataDrives'] = list()
     numberOfDisks = len(Disks)
@@ -117,6 +120,7 @@ def create_logicaldrive_json(Disks):
 
 
 def createLogicalDrive(_redfishobj):
+    # Creates a new logical drive on the selected controller
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
@@ -177,6 +181,7 @@ def createLogicalDrive(_redfishobj):
 
 
 def change_temporary_boot_order(_redfishobj, boottarget):
+    #getting response boot - Alter the temporary boot order
 
     systems_members_uri = None
     systems_members_response = None
@@ -219,6 +224,7 @@ def change_temporary_boot_order(_redfishobj, boottarget):
 
 
 def reboot_server(_redfishobj):
+    # Reboot a server
 
     systems_members_response = None
 
@@ -259,6 +265,7 @@ def reboot_server(_redfishobj):
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
 def delete_SmartArray_LogicalDrives(_redfishobj):
+    #deleting an iLO logical drives
 
     smartstorage_response = []
     smartarraycontrollers = dict()
@@ -315,6 +322,7 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
 
 
 def get_SmartArray_Drives(_redfishobj):
+    #List all logical drives associated with a smart array controller
 
     smartstorage_response = []
     smartarraycontrollers = dict()
@@ -362,6 +370,7 @@ def get_SmartArray_Drives(_redfishobj):
 
 
 def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
+    #Obtain Smart Array controller encryption property data
 
     smartstorage_response = []
     smartarraycontrollers = dict()

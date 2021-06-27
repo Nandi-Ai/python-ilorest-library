@@ -3,6 +3,10 @@
   <component name="ChangeListManager">
     <list default="true" id="5433ca0c-9fae-48f1-be89-c49a41012906" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/radcom/createRaid.py" beforeDir="false" afterPath="$PROJECT_DIR$/radcom/createRaid.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/radcom/encryption.py" beforeDir="false" afterPath="$PROJECT_DIR$/radcom/encryption.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/radcom/radcom.py" beforeDir="false" afterPath="$PROJECT_DIR$/radcom/radcom.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/radcom/raid.py" beforeDir="false" afterPath="$PROJECT_DIR$/radcom/raid.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -7,6 +7,7 @@ from get_resource_directory import get_resource_directory
 
 
 def change_temporary_boot_order(_redfishobj, boottarget):
+    #getting response boot - Alter the temporary boot order
 
     systems_members_uri = None
     systems_members_response = None
@@ -49,6 +50,7 @@ def change_temporary_boot_order(_redfishobj, boottarget):
 
 
 def reboot_server(_redfishobj):
+    # Reboot a server
 
     systems_members_response = None
 
@@ -89,6 +91,7 @@ def reboot_server(_redfishobj):
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
 def delete_SmartArray_LogicalDrives(_redfishobj):
+    #deleting an iLO logical drives
 
     smartstorage_response = []
     smartarraycontrollers = dict()
@@ -109,6 +112,7 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
 
 
 def get_SmartArray_LogicalDrives(_redfishobj):
+    #List all logical drives associated with a smart array controller
 
     smartstorage_response = []
     smartarraycontrollers = dict()
@@ -144,6 +148,7 @@ def get_SmartArray_LogicalDrives(_redfishobj):
                     print(json.dumps(drive_data, indent=4, sort_keys=True))
 
 def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
+    #Obtain Smart Array controller encryption property data
 
     smartstorage_response = []
     smartarraycontrollers = dict()
