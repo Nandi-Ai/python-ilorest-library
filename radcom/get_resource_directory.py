@@ -22,7 +22,7 @@ from redfish import RedfishClient
 from redfish.rest.v1 import ServerDownOrUnreachableError
 
 def get_resource_directory(redfishobj):
-#Obtain iLO Resource Directory, quick access to all ‘@odata.type’ references and respective ‘@odata.id’.
+#Obtain iLO Resource Directory, quick access to all references and respective
     try:
         resource_uri = redfishobj.root.obj.Oem.Hpe.Links.ResourceDirectory['@odata.id']
     except KeyError:

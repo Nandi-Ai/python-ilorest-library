@@ -104,7 +104,7 @@ def create_logicaldrive_json(Disks):
         totalStorage = diskSize
         raid_type = 'Raid1'
     elif numberOfDisks > 3:
-        totalStorage = numberOfDisks / 2 * diskSize
+        totalStorage = (numberOfDisks / 2) * diskSize
         raid_type = 'Raid10'
     elif len(Disks) < 2:
         print("ERROR!")
@@ -116,6 +116,8 @@ def create_logicaldrive_json(Disks):
     body['Accelerator'] = 'ControllerCache'
 
     print(json.dumps(body, indent=4))
+    #resp = _redfishobj.put(smartstorage_uri_config, body)
+
     return body
 
 
@@ -167,14 +169,16 @@ def createLogicalDrive(_redfishobj):
                    # print("uri")
         if len(drive_locations) > 2:
             raid1_loc = drive_locations2[:2]
-            create_logicaldrive_json(raid1_loc)
+            body = create_logicaldrive_json(raid1_loc)
+            resp = _redfishobj.put(smartstorage_uri_config, body)
             raid10_loc = drive_locations2[2:]
-            create_logicaldrive_json(raid10_loc)
+            body = create_logicaldrive_json(raid10_loc)
+            resp = _redfishobj.put(smartstorage_uri_config, body)
             #print(raid1_loc)
             #print(raid10_loc)
         elif len(drive_locations) is 2:
-            create_logicaldrive_json(drive_locations)
-#           resp = _redfishobj.put(smartstorage_uri_config, body)
+            body = create_logicaldrive_json(drive_locations)
+            resp = _redfishobj.put(smartstorage_uri_config, body)
             #print(resp)
         else:
             print("error")
@@ -465,10 +469,9 @@ if __name__ == "__main__":
     for nic in Nics:
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
-
+    delete_SmartArray_LogicalDrives(REDFISHOBJ)
     createLogicalDrive(REDFISHOBJ)
     # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
-#    delete_SmartArray_LogicalDrives(REDFISHOBJ)
 #    print("")
     reboot_server(REDFISHOBJ)
 
