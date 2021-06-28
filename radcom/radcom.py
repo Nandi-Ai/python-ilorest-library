@@ -83,7 +83,7 @@ def get_logicalvolume_actions(volumeIds):
     body["LogicalDrives"] = dict()
     body["LogicalDrives"]["Actions"] = dict()
     body["LogicalDrives"]["Actions"]["Action"] = "LogicalDriveDelete"
-    body["LogicalDrives"]["VolumeUniqueIdentifier"] = str(volumeIds[0])
+    body["LogicalDrives"]["VolumeUniqueIdentifier"] = str(volumeIds)
     body["DataGuard"] = "Permissive"
  
     print(body)
@@ -450,7 +450,7 @@ if __name__ == "__main__":
 
 
     Att_bios = {'ExtendedMemTest': 'Disabled', 'InternalSDCardSlot': 'Disabled','AutoPowerOn': 'PowerOn' \
-                , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'LegacyBios', 'FlexLom1Enable': 'Auto', \
+                , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'Uefi', 'FlexLom1Enable': 'Auto', \
                 'RedundantPowerSupply': 'HighEfficiencyAuto', 'PciSlot1Enable': 'HighEfficiencyAuto' \
                 , 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
 
@@ -470,7 +470,7 @@ if __name__ == "__main__":
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
     delete_SmartArray_LogicalDrives(REDFISHOBJ)
-    createLogicalDrive(REDFISHOBJ)
+    #createLogicalDrive(REDFISHOBJ)
     # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
 #    print("")
     reboot_server(REDFISHOBJ)
