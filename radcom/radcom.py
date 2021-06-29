@@ -7,7 +7,7 @@ from get_resource_directory import get_resource_directory
 
 
 def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_server_reset):
-
+# mounting virtual media for HPE iLO systems
     virtual_media_uri = None
     virtual_media_response = []
 
