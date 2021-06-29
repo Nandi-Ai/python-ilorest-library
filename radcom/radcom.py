@@ -462,19 +462,7 @@ def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
                                                                         ['@odata.id']].get(data)))
 
 if __name__ == "__main__":
-    # When running on the server locally use the following commented values
-    #SYSTEM_URL = None
-    #LOGIN_ACCOUNT = None
-    #LOGIN_PASSWORD = None
 
-    # When running remotely connect using the secured (https://) address,
-    # account name, and password to send https requests
-    # SYSTEM_URL acceptable examples:
-    # "https://10.0.0.100"
-    # "https://ilo.hostname"
-    # SYSTEM_URL = "https://febm-probe3.ilo.ps.radcom.co.il"
-    # LOGIN_ACCOUNT = "admin"
-    # LOGIN_PASSWORD = "Radmin1234"
 
     BOOT_ON_NEXT_SERVER_RESET = True
 
@@ -483,11 +471,11 @@ if __name__ == "__main__":
     parser.add_argument('-i','--ilo',dest='ilo_address',action="store",help="iLO IP address or FQDN",default="febm-probe.ilo.ps.radcom.co.il")
     parser.add_argument('-u','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
     parser.add_argument('-p','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
-    
+    parser.add_argument('-m','--uri',dest='media_url',action="store",help="HTTP Server URI",default="Radmin1234")
+
     args = parser.parse_args()
     system_url = "https://" + args.ilo_address
 
-    MEDIA_URL = "http://172.16.10.226/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso"
     #specify the type of content the media represents
     MEDIA_TYPE = "CD" #current possible options: Floppy, USBStick, CD, DVD
 
@@ -529,7 +517,7 @@ if __name__ == "__main__":
     # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
 #    print("")
     reboot_server(REDFISHOBJ)
-    mount_virtual_media_iso(REDFISHOBJ, MEDIA_URL, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+    mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
 
 
 
