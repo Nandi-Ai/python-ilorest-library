@@ -1,4 +1,4 @@
-import argparse
+import argparse, time
 import sys, json, re, random, string
 from redfish import RedfishClient
 from redfish.rest.v1 import ServerDownOrUnreachableError
@@ -116,39 +116,41 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
             #bios_data = _redfishobj.get(bios_uri)
             #print(json.dumps(bios_data.dict, indent=4, sort_keys=True))
 
-
+def check_response(resp,_redfishobj):
+    if resp.obj['error']:
+        error_msg = (json.dumps(resp.obj['error']['@Message.ExtendedInfo'][0].get("MessageId"), indent=4,
+                                sort_keys=True))
+        if 'SystemResetRequired' in error_msg:
+            print("Restarting server!")
+            reboot_server(_redfishobj)
+        elif 'Success' in error_msg:
+            print("Success")
+        else:
+            print("Other reponse on error")
+    else:
+        print ("Didn't find error")
 
 def get_logicalvolume_actions(volumeIds):
     #getting the logical volumes
-    params = {
-        "LogicalDrives": [],
-        "DataGuard": "Permissive"
-    }
-    for id in volumeIds:
-        action = {
-            "Actions": "[Action: LogicalDriveDelete]"
-        }
-        # item['VolumeUniqueIdentifier'] = id
-        # params['LogicalDrives'].append(action)
     body = dict()
     body["LogicalDrives"] = dict()
     body["LogicalDrives"]["Actions"] = dict()
     body["LogicalDrives"]["Actions"]["Action"] = "LogicalDriveDelete"
     body["LogicalDrives"]["VolumeUniqueIdentifier"] = str(volumeIds)
-    body["DataGuard"] = "Permissive"
+    body["DataGuard"] = "Disabled"
  
     # print(body)
+    print(json.dumps(body, indent=4, sort_keys=True))
     return body
 
 def create_logicaldrive_json(Disks):
     # creating logical drive disks with sorting the disks for which raid
-    body = dict()
-    body['DataDrives'] = list()
+    logicalDrive = dict()
+    logicalDrive['DataDrives'] = list()
     numberOfDisks = len(Disks)
     diskSize = int(Disks[0]["CapacityGB"])
-    # print(diskSize)
     for disk in Disks:
-        body['DataDrives'].append(disk["Location"])
+        logicalDrive['DataDrives'].append(disk["Location"])
         if int(disk["CapacityGB"]) <  diskSize:
             print("Smaller disk found")
             diskSize = int(disk["CapacityGB"])
@@ -161,14 +163,31 @@ def create_logicaldrive_json(Disks):
     elif len(Disks) < 2:
         print("ERROR!")
 
-    body['CapacityGiB'] = totalStorage
-    body['Raid'] = raid_type
-    body['StripSizeBytes'] = 262144
-    body['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(string.digits) for i in range(5)))
-    body['Accelerator'] = 'ControllerCache'
+    logicalDrive['CapacityGiB'] = int(totalStorage * 0.9)
+    logicalDrive['Raid'] = raid_type
+    # logicalDrive['StripSizeBytes'] = 262144
+    logicalDrive['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(string.digits) for i in range(5)))
+    logicalDrive['Accelerator'] = 'ControllerCache'
 
-    print(json.dumps(body, indent=4))
+    # print(json.dumps(logicalDrive, indent=4))
     #resp = _redfishobj.put(smartstorage_uri_config, body)
+
+    return logicalDrive
+
+def create_logicaldrive_body(disks):
+    # creating logical drive disks with sorting the disks for which raid
+    body = dict()
+    logicalDrive = dict()
+    body['DataGuard'] = "Permissive"
+    body["LogicalDrives"] = list()
+    if len(disks) > 2:
+        raid1_loc = disks[:2]
+        body["LogicalDrives"].append(create_logicaldrive_json(raid1_loc))
+        raid10_loc = disks[2:]
+        body["LogicalDrives"].append(create_logicaldrive_json(raid10_loc))
+    elif len(disks) is 2:
+        body["LogicalDrives"].append(create_logicaldrive_json(disks))
+    print(json.dumps(body, indent=4))
 
     return body
 
@@ -200,7 +219,8 @@ def createLogicalDrive(_redfishobj):
                 smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
                 # sys.stdout.write("Logical Drive URIs for Smart Storage Array Controller " \
                   #  "'%s\' : \n" % smartstorage_resp.get('Id'))
-                PysicalDrives_uri = smartstorage_resp.Links['PhysicalDrives']['@odata.id']
+                PysicalDrives_uri = str(smartstorage_resp.Links['PhysicalDrives']['@odata.id'])
+                print(PysicalDrives_uri)
                 Pysicaldrives_resp = _redfishobj.get(PysicalDrives_uri)
                 if not Pysicaldrives_resp.dict['Members']:
                     sys.stderr.write("\tPysical drives are not available for this controller.\n")
@@ -214,26 +234,16 @@ def createLogicalDrive(_redfishobj):
                 #print(drive_locations)
 
             elif '#SmartStorageConfig.' in instance['@odata.type']:
-                   smartstorage_uri_config = instance['@odata.id']
-                   print(smartstorage_uri_config)
-                   # print("uri")
-        if len(drive_locations) > 2:
-            raid1_loc = drive_locations[:2]
-            body = create_logicaldrive_json(raid1_loc)
-            resp = _redfishobj.put(smartstorage_uri_config, body)
-            print(resp)
-            raid10_loc = drive_locations[2:]
-            body = create_logicaldrive_json(raid10_loc)
-            resp = _redfishobj.put(smartstorage_uri_config, body)
-            print(resp)
-            #print(raid1_loc)
-            #print(raid10_loc)
-        elif len(drive_locations) is 2:
-            body = create_logicaldrive_json(drive_locations)
-            resp = _redfishobj.put(smartstorage_uri_config, body)
-            print(resp)
-        else:
-            print("error")
+               smartstorage_uri_config = instance['@odata.id']
+               print(smartstorage_uri_config)
+               # print("uri")
+
+
+        body = create_logicaldrive_body(drive_locations)
+
+        resp = _redfishobj.put(smartstorage_uri_config, body)
+        check_response(resp,_redfishobj)
+
 
 
 def change_temporary_boot_order(_redfishobj, boottarget):
@@ -278,7 +288,6 @@ def change_temporary_boot_order(_redfishobj, boottarget):
             print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
 
 
-
 def reboot_server(_redfishobj):
     # Reboot a server
 
@@ -290,7 +299,7 @@ def reboot_server(_redfishobj):
         #relevant URI
         systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
         systems_response = _redfishobj.get(systems_uri)
-        systems_uri = next(iter(systems_response.obj['Members']))['@odata.id']
+        systems_uri = next(iter(systems_response.obj['Members']))
         systems_response = _redfishobj.get(systems_uri)
     else:
         for instance in resource_instances:
@@ -319,10 +328,16 @@ def reboot_server(_redfishobj):
         else:
             print("Success!\n")
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
+            time.sleep(25)
+
+
 
 def delete_SmartArray_LogicalDrives(_redfishobj):
     #deleting an iLO logical drives
-
+    deleteAlljson = {
+        "LogicalDrives": [],
+        "DataGuard": "Disabled"
+    }
     smartstorage_response = []
     smartarraycontrollers = dict()
 
@@ -352,26 +367,28 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
                 smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
                 sys.stdout.write("Logical Drive URIs for Smart Storage Array Controller " \
                     "'%s\' : \n" % smartstorage_resp.get('Id'))
-                logicaldrives_uri = smartstorage_resp.Links['LogicalDrives']['@odata.id']
+                logicaldrives_uri = str(smartstorage_resp.Links['LogicalDrives']['@odata.id'])
                 logicaldrives_resp = _redfishobj.get(logicaldrives_uri)
                 if not logicaldrives_resp.dict['Members']:
                     sys.stderr.write("\tLogical drives are not available for this controller.\n")
+                    return()
                 for drives in logicaldrives_resp.dict['Members']:
                     sys.stdout.write("\t An associated logical drive: %s\n" % drives)
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
-                    drive_ids.append(drive_data["VolumeUniqueIdentifier"])
-                    # print(drive_data["VolumeUniqueIdentifier"])
+                    drive_ids.append(str(drive_data["VolumeUniqueIdentifier"]))
+                    print(drive_data["VolumeUniqueIdentifier"])
             elif '#SmartStorageConfig.' in instance['@odata.type']:
-                   smartstorage_uri_config = instance['@odata.id']
-                   # print(smartstorage_uri_config)
-            #       print("uri")
-
+                smartstorage_uri_config = instance['@odata.id']
+                # print("uri")
+                # print(smartstorage_uri_config)
 
     body = get_logicalvolume_actions(drive_ids)
     #print(smartstorage_uri_config)
-    #print(body)
+    # print(body)
     # res = _redfishobj.put("https://febm-probe3.ilo.ps.radcom.co.il/redfish/v1/Systems/1/SmartStorageConfig/Settings/", )
-    resp = _redfishobj.put(smartstorage_uri_config, body)
+    resp = _redfishobj.put(smartstorage_uri_config, deleteAlljson)
+    check_response(resp,_redfishobj)
+
     return resp.status
 
 
@@ -396,6 +413,7 @@ def get_SmartArray_Drives(_redfishobj):
         smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links\
                                                                 ['ArrayControllers']['@odata.id']
         smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
+        print(smartstorage_response)
     else:
         for instance in resource_instances:
             #Use Resource directory to find the relevant URI
@@ -415,13 +433,12 @@ def get_SmartArray_Drives(_redfishobj):
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
                     #print(json.dumps(drive_data, indent=4, sort_keys=True))
                 if logicaldrives_resp.dict['Members']:
-                    sys.stderr.write("\tLogical drives are available for this controller.\nDeleting..")
-                    del_res = delete_SmartArray_LogicalDrives(REDFISHOBJ)
-                    if del_res == 200:
-                        print("success")
-                    else:
-                        print("fail, couldn't delete logical drives.")
-                        exit(1)
+                    for logicalDrive in logicaldrives_resp.dict['Members']:
+                        print("Found Logical drive:")
+                        drive_data = _redfishobj.get(logicalDrive['@odata.id']).dict
+                        print(json.dumps(drive_data, indent=4, sort_keys=True))
+                else:
+                    print ("Couldn't find logical drives")
 
 
 
@@ -462,6 +479,12 @@ def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
                 sys.stdout.write("\t %s : %s\n" % (data, smartarraycontrollers[controller\
                                                                         ['@odata.id']].get(data)))
 
+def start_timer():
+    start = time.time()
+    #print(start)
+    time.sleep(15)
+
+
 if __name__ == "__main__":
 
 
@@ -490,9 +513,6 @@ if __name__ == "__main__":
     except ServerDownOrUnreachableError as excp:
         sys.stderr.write("ERROR: server not reachable or does not support RedFish.\n")
         sys.exit()
-    get_SmartArray_Drives(REDFISHOBJ)
-
-
     Att_bios = {'ExtendedMemTest': 'Disabled', 'InternalSDCardSlot': 'Disabled','AutoPowerOn': 'PowerOn' \
                 , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'Uefi', 'FlexLom1Enable': 'Auto', \
                 'RedundantPowerSupply': 'HighEfficiencyAuto', 'PciSlot1Enable': 'HighEfficiencyAuto' \
@@ -500,9 +520,9 @@ if __name__ == "__main__":
 
     AttributesElements = Att_bios.items()
     for ATTRIBUTE, ATTRIBUTE_VAL in AttributesElements:
-        print("--------------------")
-        print(ATTRIBUTE)
-        print("--------------------")
+        # print("--------------------")
+        # print(ATTRIBUTE)
+        # print("--------------------")
         change_bios_setting(REDFISHOBJ, ATTRIBUTE, ATTRIBUTE_VAL)
 
     # Disable PXE to all NICS on board
@@ -513,11 +533,15 @@ if __name__ == "__main__":
     for nic in Nics:
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
+
+    get_SmartArray_Drives(REDFISHOBJ)
+
     delete_SmartArray_LogicalDrives(REDFISHOBJ)
     createLogicalDrive(REDFISHOBJ)
     # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
     get_SmartArray_Drives(REDFISHOBJ)
 #    print("")
+    # start_timer()
     reboot_server(REDFISHOBJ)
     # mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
 

@@ -34,7 +34,7 @@ $ docker run -d -p 80:80  -v <local_image_path>:/usr/local/apache2/htdocs httpd
 <local_image_path> : is the image folder location in the local OS.
 
 to run the script use:
-$ python radcom.py -m 172.29.169.106/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso
+$ python radcom.py -m http://<IP_Address>/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso
 
 Default connection with iLO server: " febm-probe.ilo.ps.radcom.co.il "
 
