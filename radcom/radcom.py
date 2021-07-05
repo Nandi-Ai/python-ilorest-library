@@ -31,23 +31,22 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
         for virtual_media_slot in virtual_media_response.obj['Members']:
             data = _redfishobj.get(virtual_media_slot['@odata.id'])
             if media_type in data.dict['MediaTypes']:
+                # i'm not sure that i do it correctly
                 virtual_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
+                virtual_media_eject_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
                 post_body = {"Image": iso_url}
-
                 if iso_url:
+                    power_off_server(_redfishobj)
+                    eject = _redfishobj.post(virtual_media_eject_uri, {})
+                    print(eject)
                     resp = _redfishobj.post(virtual_media_mount_uri, post_body)
-                    if boot_on_next_server_reset is not None:
-                        patch_body = {}
-                        patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": \
-                                                 boot_on_next_server_reset}}
-                        boot_resp = _redfishobj.patch(data.obj['@odata.id'], patch_body)
-                        if not boot_resp.status == 200:
-                            sys.stderr.write("Failure setting BootOnNextServerReset")
                     if resp.status == 400:
                         try:
-                             print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                            print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
                                                                                     sort_keys=True))
                         except Exception as excp:
+                            print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                             sort_keys=True))
                             sys.stderr.write("A response error occurred, unable to access iLO"
                                              "Extended Message Info...")
                     elif resp.status != 200:
@@ -55,6 +54,17 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                     else:
                         print("Success!\n")
                         # print(json.dumps(resp.dict, indent=4, sort_keys=True))
+                    if boot_on_next_server_reset is not None:
+                        patch_body = {}
+                        patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": \
+                                                         boot_on_next_server_reset}}
+                        print(patch_body)
+                        boot_resp = _redfishobj.patch(data.obj['@odata.id'], patch_body)
+                        if not boot_resp.status == 200:
+                            sys.stderr.write("Failure setting BootOnNextServerReset\n")
+                            print(boot_resp.status)
+                            print(json.dumps(boot_resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                             sort_keys=True))
                 break
 
 
@@ -66,15 +76,10 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
     global bios_res
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
-        #if we do not have a resource directory or want to force it's non use to find the
-        #relevant URI
-        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
-        systems_response = _redfishobj.get(systems_uri)
-        systems_members_uri = next(iter(systems_response.obj['Members']))['@odata.id']
-        systems_members_response = _redfishobj.get(systems_members_uri)
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
         bios_uri = systems_members_response.obj['Bios']['@odata.id']
         bios_data = _redfishobj.get(bios_uri)
-
     else:
         #Use Resource directory to find the relevant URI
         for instance in resource_instances:
@@ -83,10 +88,6 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
                 bios_data = _redfishobj.get(bios_uri)
                 break
     bios_res = bios_data.obj
-    #if bios_data:
-        # print("\n\nShowing BIOS attributes before changes:\n\n")
-       # print(json.dumps(bios_data.dict, indent=4, sort_keys=True))
-
     if bios_uri:
         #BIOS settings URI is needed
         bios_settings_uri = bios_data.obj['@Redfish.Settings']['SettingsObject']['@odata.id']
@@ -95,7 +96,6 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
         if bios_property:
             _redfishobj.property_value = property_value
         resp = _redfishobj.patch(bios_settings_uri, body)
-
         #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         #error message to see what went wrong
         if resp.status == 400:
@@ -109,12 +109,6 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
             sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
         else:
             print("\nSuccess!\n")
-            #print("\n\nShowing BIOS attributes after changes:\n\n")
-            # print(json.dumps(resp.dict, indent=4, sort_keys=True))
-            #uncomment if you would like to see the full list of attributes
-            #print("\n\nShowing BIOS attributes after changes:\n\n")
-            #bios_data = _redfishobj.get(bios_uri)
-            #print(json.dumps(bios_data.dict, indent=4, sort_keys=True))
 
 def check_response(resp,_redfishobj):
     if resp.obj['error']:
@@ -197,13 +191,8 @@ def createLogicalDrive(_redfishobj):
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
-        #if we do not have a resource directory or want to force it's non use to find the
-        #relevant URI
-
-        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
-        systems_response = _redfishobj.get(systems_uri)
-        systems_members_uri = next(iter(systems_response.obj['Members']))['@odata.id']
-        systems_members_response = _redfishobj.get(systems_members_uri)
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
         smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
                                                                 ['SmartStorage']['@odata.id']
         smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links \
@@ -237,14 +226,9 @@ def createLogicalDrive(_redfishobj):
                smartstorage_uri_config = instance['@odata.id']
                print(smartstorage_uri_config)
                # print("uri")
-
-
         body = create_logicaldrive_body(drive_locations)
-
         resp = _redfishobj.put(smartstorage_uri_config, body)
         check_response(resp,_redfishobj)
-
-
 
 def change_temporary_boot_order(_redfishobj, boottarget):
     #getting response boot - Alter the temporary boot order
@@ -254,10 +238,8 @@ def change_temporary_boot_order(_redfishobj, boottarget):
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
-        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
-        systems_response = _redfishobj.get(systems_uri)
-        systems_members_uri = next(iter(systems_response.obj['Members']))['@odata.id']
-        systems_members_response = _redfishobj.get(systems_members_uri)
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
     else:
         for instance in resource_instances:
             if '#ComputerSystem.' in instance['@odata.type']:
@@ -287,6 +269,42 @@ def change_temporary_boot_order(_redfishobj, boottarget):
             print("\n\nShowing boot override target:\n\n")
             print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
 
+def power_off_server(_redfishobj):
+    systems_members_response = None
+
+    resource_instances = get_resource_directory(_redfishobj)
+    if DISABLE_RESOURCE_DIR or not resource_instances:
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
+    else:
+        for instance in resource_instances:
+            # Use Resource directory to find the relevant URI
+            if '#HpeComputerSystemExt.' in instance['@odata.type']:
+                systems_uri = instance['@odata.id']
+                systems_members_response = _redfishobj.get(systems_uri)
+
+    if systems_members_response:
+        system_reboot_uri = systems_members_response.obj['Actions']['#HpeComputerSystemExt.PowerButton']['target']
+        body = dict()
+        body['Action'] = 'HpeComputerSystemExt.PowerButton'
+        body['PushType'] = "Press"
+        resp = _redfishobj.post(system_reboot_uri, body)
+        # If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
+        # error message to see what went wrong
+        if resp.status == 400:
+            try:
+                print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                 sort_keys=True))
+            except Exception as excp:
+                sys.stderr.write("A response error occurred, unable to access iLO Extended "
+                                 "Message Info...")
+        elif resp.status != 200:
+            sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+        else:
+            print("Success!\n")
+            print(json.dumps(resp.dict, indent=4, sort_keys=True))
+
+
 
 def reboot_server(_redfishobj):
     # Reboot a server
@@ -295,21 +313,17 @@ def reboot_server(_redfishobj):
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
-        #if we do not have a resource directory or want to force it's non use to find the
-        #relevant URI
-        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
-        systems_response = _redfishobj.get(systems_uri)
-        systems_uri = next(iter(systems_response.obj['Members']))
-        systems_response = _redfishobj.get(systems_uri)
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
     else:
         for instance in resource_instances:
             #Use Resource directory to find the relevant URI
             if '#ComputerSystem.' in instance['@odata.type']:
                 systems_uri = instance['@odata.id']
-                systems_response = _redfishobj.get(systems_uri)
+                systems_members_response = _redfishobj.get(systems_uri)
 
-    if systems_response:
-        system_reboot_uri = systems_response.obj['Actions']['#ComputerSystem.Reset']['target']
+    if systems_members_response:
+        system_reboot_uri = systems_members_response.obj['Actions']['#ComputerSystem.Reset']['target']
         body = dict()
         body['Action'] = 'ComputerSystem.Reset'
         body['ResetType'] = "ForceRestart"
@@ -343,13 +357,8 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
-        #if we do not have a resource directory or want to force it's non use to find the
-        #relevant URI
-
-        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
-        systems_response = _redfishobj.get(systems_uri)
-        systems_members_uri = next(iter(systems_response.obj['Members']))['@odata.id']
-        systems_members_response = _redfishobj.get(systems_members_uri)
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
         smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
                                                                 ['SmartStorage']['@odata.id']
         smart_storage_config_uri = systems_members_response.obj.Oem.Hpe.Links\
@@ -402,12 +411,8 @@ def get_SmartArray_Drives(_redfishobj):
 
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
-        #if we do not have a resource directory or want to force it's non use to find the
-        #relevant URI
-        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
-        systems_response = _redfishobj.get(systems_uri)
-        systems_members_uri = next(iter(systems_response.obj['Members']))['@odata.id']
-        systems_members_response = _redfishobj.get(systems_members_uri)
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
         smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
                                                                 ['SmartStorage']['@odata.id']
         smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links\
@@ -440,6 +445,17 @@ def get_SmartArray_Drives(_redfishobj):
                 else:
                     print ("Couldn't find logical drives")
 
+def systems_path(_redfishobj):
+    resource_instances = get_resource_directory(_redfishobj)
+    if DISABLE_RESOURCE_DIR or not resource_instances:
+        #if we do not have a resource directory or want to force it's non use to find the
+        #relevant URI
+        systems_uri = _redfishobj.root.obj['Systems']['@odata.id']
+        systems_response = _redfishobj.get(systems_uri)
+        systems_members_uri = next(iter(systems_response.obj['Members']))['@odata.id']
+        systems_members_response = _redfishobj.get(systems_members_uri)
+
+        return (systems_members_response)
 
 
 def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
@@ -478,11 +494,6 @@ def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
             if data in desired_properties:
                 sys.stdout.write("\t %s : %s\n" % (data, smartarraycontrollers[controller\
                                                                         ['@odata.id']].get(data)))
-
-def start_timer():
-    start = time.time()
-    #print(start)
-    time.sleep(15)
 
 
 if __name__ == "__main__":
@@ -534,16 +545,14 @@ if __name__ == "__main__":
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
 
-    get_SmartArray_Drives(REDFISHOBJ)
 
+    get_SmartArray_Drives(REDFISHOBJ)
     delete_SmartArray_LogicalDrives(REDFISHOBJ)
     createLogicalDrive(REDFISHOBJ)
     # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
-    get_SmartArray_Drives(REDFISHOBJ)
-#    print("")
-    # start_timer()
+    # get_SmartArray_Drives(REDFISHOBJ)
     reboot_server(REDFISHOBJ)
-    # mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+    mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
 
 
 
