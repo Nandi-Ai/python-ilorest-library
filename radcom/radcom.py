@@ -39,6 +39,7 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                     power_off_server(_redfishobj)
                     eject = _redfishobj.post(virtual_media_eject_uri, {})
                     print(eject)
+                    print('Mounting vitual media...')
                     resp = _redfishobj.post(virtual_media_mount_uri, post_body)
                     print("insert status")
                     print(resp.status)
@@ -67,7 +68,6 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                         patch_body = {}
                         patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": \
                                                          boot_on_next_server_reset}}
-                        print(patch_body)
                         boot_resp = _redfishobj.patch(data.obj['@odata.id'], patch_body)
                         if not boot_resp.status == 200:
                             sys.stderr.write("Failure setting BootOnNextServerReset\n")
@@ -104,6 +104,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
         #update BIOS password
         if bios_property:
             _redfishobj.property_value = property_value
+        print(f'Setting {bios_property} to {property_value}')
         resp = _redfishobj.patch(bios_settings_uri, body)
         #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         #error message to see what went wrong
@@ -118,6 +119,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
             sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
         else:
             print("\nSuccess!\n")
+
 
 def check_response(resp,_redfishobj):
     if resp.obj['error']:
@@ -143,7 +145,7 @@ def get_logicalvolume_actions(volumeIds):
     body["DataGuard"] = "Disabled"
  
     # print(body)
-    print(json.dumps(body, indent=4, sort_keys=True))
+    # print(json.dumps(body, indent=4, sort_keys=True))
     return body
 
 def create_logicaldrive_json(Disks):
@@ -233,7 +235,7 @@ def createLogicalDrive(_redfishobj):
 
             elif '#SmartStorageConfig.' in instance['@odata.type']:
                smartstorage_uri_config = instance['@odata.id']
-               print(smartstorage_uri_config)
+               # print(smartstorage_uri_config)
                # print("uri")
         body = create_logicaldrive_body(drive_locations)
         resp = _redfishobj.put(smartstorage_uri_config, body)
@@ -297,6 +299,7 @@ def power_off_server(_redfishobj):
         body = dict()
         body['Action'] = 'HpeComputerSystemExt.PowerButton'
         body['PushType'] = "Press"
+        print('Powering off the server')
         resp = _redfishobj.post(system_reboot_uri, body)
         # If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         # error message to see what went wrong
@@ -311,7 +314,7 @@ def power_off_server(_redfishobj):
             sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
         else:
             print("Success!\n")
-            print(json.dumps(resp.dict, indent=4, sort_keys=True))
+            # print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
 
 
@@ -370,12 +373,12 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
         systems_members_response = systems_path(systems_u)
         smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
                                                                 ['SmartStorage']['@odata.id']
-        smart_storage_config_uri = systems_members_response.obj.Oem.Hpe.Links\
-                                                                ['SmartStorageconfig']['@odata.id']
+        # smart_storage_config_uri = systems_members_response.obj.Oem.Hpe.Links\
+        #                                                         ['SmartStorageconfig']['@odata.id']
         #print(smart_storage_config_uri)
-        smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links \
-            ['ArrayControllers']['@odata.id']
-        smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
+        # smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links \
+        #     ['ArrayControllers']['@odata.id']
+        # smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
     else:
         drive_ids = []
         for instance in resource_instances:
@@ -400,14 +403,14 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
                 # print("uri")
                 # print(smartstorage_uri_config)
 
-    body = get_logicalvolume_actions(drive_ids)
+    # body = get_logicalvolume_actions(drive_ids)
     #print(smartstorage_uri_config)
     # print(body)
     # res = _redfishobj.put("https://febm-probe3.ilo.ps.radcom.co.il/redfish/v1/Systems/1/SmartStorageConfig/Settings/", )
     resp = _redfishobj.put(smartstorage_uri_config, deleteAlljson)
     check_response(resp,_redfishobj)
 
-    return resp.status
+    # return resp.status
 
 
 
