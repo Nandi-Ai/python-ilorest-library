@@ -525,6 +525,7 @@ if __name__ == "__main__":
     parser.add_argument('-u','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
     parser.add_argument('-p','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
     parser.add_argument('-m','--uri',dest='media_url',action="store",help="HTTP Server URI",default="http://172.29.169.106/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso")
+    parser.add_argument('-o','--os',dest='os',help="OS install only",action='store_true')
 
     args = parser.parse_args()
     system_url = "https://" + args.ilo_address
@@ -562,7 +563,10 @@ if __name__ == "__main__":
     for nic in Nics:
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
-
+    if args.os:
+        mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+        REDFISHOBJ.logout()
+        sys.exit()
 
     # get_SmartArray_Drives(REDFISHOBJ)
     # delete_SmartArray_LogicalDrives(REDFISHOBJ)
