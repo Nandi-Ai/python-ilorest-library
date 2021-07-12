@@ -33,7 +33,7 @@ def get_resource_directory(redfishobj):
     resources = []
 
     if response.status == 200:
-        sys.stdout.write("\tFound resource directory at /redfish/v1/resourcedirectory" + "\n\n")
+        # sys.stdout.write("\tFound resource directory at /redfish/v1/resourcedirectory" + "\n\n")
         resources = response.dict["Instances"]
     else:
         sys.stderr.write("\tResource directory missing at /redfish/v1/resourcedirectory" + "\n")

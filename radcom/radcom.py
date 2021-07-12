@@ -106,6 +106,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
         if bios_property:
             _redfishobj.property_value = property_value
         resp = _redfishobj.patch(bios_settings_uri, body)
+        print('Setting {} to {}'.format(bios_property, property_value))
         #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         #error message to see what went wrong
         if resp.status == 400:
