@@ -38,8 +38,13 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                 if iso_url:
                     power_off_server(_redfishobj)
                     eject = _redfishobj.post(virtual_media_eject_uri, {})
+<<<<<<< HEAD
+                    print(eject.status)
+                    print('eject status')
+=======
                     print(eject)
                     print('Mounting vitual media...')
+>>>>>>> clean up printings
                     resp = _redfishobj.post(virtual_media_mount_uri, post_body)
                     print("insert status")
                     print(resp.status)
@@ -282,25 +287,32 @@ def change_temporary_boot_order(_redfishobj, boottarget):
 
 def power_off_server(_redfishobj):
     systems_members_response = None
-
+    print("POWERING OFF THE SERVER")
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
         systems_u = None
         systems_members_response = systems_path(systems_u)
     else:
+        print('went in else')
         for instance in resource_instances:
             # Use Resource directory to find the relevant URI
             if '#HpeComputerSystemExt.' in instance['@odata.type']:
+                print('went inside if')
                 systems_uri = instance['@odata.id']
                 systems_members_response = _redfishobj.get(systems_uri)
+                print(systems_members_response)
 
     if systems_members_response:
         system_reboot_uri = systems_members_response.obj['Actions']['#HpeComputerSystemExt.PowerButton']['target']
+        print(system_reboot_uri)
         body = dict()
         body['Action'] = 'HpeComputerSystemExt.PowerButton'
         body['PushType'] = "Press"
         print('Powering off the server')
         resp = _redfishobj.post(system_reboot_uri, body)
+        print('server power off')
+        print(resp.status)
+
         # If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         # error message to see what went wrong
         if resp.status == 400:
@@ -558,11 +570,10 @@ if __name__ == "__main__":
 
 
 
-    get_SmartArray_Drives(REDFISHOBJ)
-    delete_SmartArray_LogicalDrives(REDFISHOBJ)
-    createLogicalDrive(REDFISHOBJ)
-    # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
     # get_SmartArray_Drives(REDFISHOBJ)
+    # delete_SmartArray_LogicalDrives(REDFISHOBJ)
+    # createLogicalDrive(REDFISHOBJ)
+    # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
     reboot_server(REDFISHOBJ)
     mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
 
