@@ -36,17 +36,17 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                 virtual_media_eject_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
                 post_body = {"Image": iso_url}
                 if iso_url:
-                    power_off_server(_redfishobj)
+                    # power_off_server(_redfishobj)
                     eject = _redfishobj.post(virtual_media_eject_uri, {})
-                    print(eject.status)
-                    print('eject status')
+                    print('eject status: {}'.format(eject.status))
+                    print('Mounting virtual media...')
                     resp = _redfishobj.post(virtual_media_mount_uri, post_body)
-                    print("insert status")
-                    print(resp.status)
+                    print('insert status: {}'.format(resp.status))
                     if boot_on_next_server_reset is not None:
                         patch_body = {}
                         patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": \
                                                          boot_on_next_server_reset}}
+                        print('Setting BootOnNextServerReset...')
                         boot_resp = _redfishobj.patch(data.obj['@odata.id'], patch_body)
                         if not boot_resp.status == 200:
                             sys.stderr.write("Failure setting BootOnNextServerReset")
@@ -64,17 +64,17 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                     else:
                         print("Success!\n")
                         # print(json.dumps(resp.dict, indent=4, sort_keys=True))
-                    if boot_on_next_server_reset is not None:
-                        patch_body = {}
-                        patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": \
-                                                         boot_on_next_server_reset}}
-                        print(patch_body)
-                        boot_resp = _redfishobj.patch(data.obj['@odata.id'], patch_body)
-                        if not boot_resp.status == 200:
-                            sys.stderr.write("Failure setting BootOnNextServerReset\n")
-                            print(boot_resp.status)
-                            print(json.dumps(boot_resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
-                                             sort_keys=True))
+                    # if boot_on_next_server_reset is not None:
+                    #     patch_body = {}
+                    #     patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": \
+                    #                                      boot_on_next_server_reset}}
+                    #     print(patch_body)
+                    #     boot_resp = _redfishobj.patch(data.obj['@odata.id'], patch_body)
+                    #     if not boot_resp.status == 200:
+                    #         sys.stderr.write("Failure setting BootOnNextServerReset\n")
+                    #         print(boot_resp.status)
+                    #         print(json.dumps(boot_resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                    #                          sort_keys=True))
                 break
 
 
@@ -526,6 +526,7 @@ if __name__ == "__main__":
     parser.add_argument('-p','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
     parser.add_argument('-m','--uri',dest='media_url',action="store",help="HTTP Server URI",default="http://172.29.169.106/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso")
     parser.add_argument('-o','--os',dest='os',help="OS install only",action='store_true')
+    parser.add_argument('-d','--drives',dest='logical_drives',action="store_true",help="Get Logical Drives olny")
 
     args = parser.parse_args()
     system_url = "https://" + args.ilo_address
@@ -565,6 +566,11 @@ if __name__ == "__main__":
 
     if args.os:
         mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+        REDFISHOBJ.logout()
+        sys.exit()
+
+    if args.logical_drives:
+        get_SmartArray_Drives(REDFISHOBJ)
         REDFISHOBJ.logout()
         sys.exit()
 
