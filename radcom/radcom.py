@@ -159,7 +159,7 @@ def create_logicaldrive_json(Disks):
         if int(disk["CapacityGB"]) <  diskSize:
             print("Smaller disk found")
             diskSize = int(disk["CapacityGB"])
-    if numberOfDisks is 2:
+    if numberOfDisks == 2:
         totalStorage = diskSize
         raid_type = 'Raid1'
     elif numberOfDisks > 3:
@@ -191,7 +191,7 @@ def create_logicaldrive_body(disks):
         body["LogicalDrives"].append(create_logicaldrive_json(raid1_loc))
         raid10_loc = disks[2:]
         body["LogicalDrives"].append(create_logicaldrive_json(raid10_loc))
-    elif len(disks) is 2:
+    elif len(disks) == 2:
         body["LogicalDrives"].append(create_logicaldrive_json(disks))
     print(json.dumps(body, indent=4))
 
