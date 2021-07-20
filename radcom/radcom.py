@@ -173,6 +173,7 @@ def create_logicaldrive_json(Disks):
     # logicalDrive['StripSizeBytes'] = 262144
     logicalDrive['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(string.digits) for i in range(5)))
     logicalDrive['Accelerator'] = 'ControllerCache'
+    logicalDrive['LegacyBootPriority'] = 'All'
 
     # print(json.dumps(logicalDrive, indent=4))
     #resp = _redfishobj.put(smartstorage_uri_config, body)
@@ -240,6 +241,7 @@ def createLogicalDrive(_redfishobj):
         body = create_logicaldrive_body(drive_locations)
         resp = _redfishobj.put(smartstorage_uri_config, body)
         check_response(resp,_redfishobj)
+        print(resp)
 
 def change_temporary_boot_order(_redfishobj, boottarget):
     #getting response boot - Alter the temporary boot order
@@ -409,13 +411,13 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
                 # print("uri")
                 # print(smartstorage_uri_config)
 
-    body = get_logicalvolume_actions(drive_ids)
-    #print(smartstorage_uri_config)
+    # body = get_logicalvolume_actions(drive_ids)
+    print(smartstorage_uri_config)
     # print(body)
     # res = _redfishobj.put("https://febm-probe3.ilo.ps.radcom.co.il/redfish/v1/Systems/1/SmartStorageConfig/Settings/", )
     resp = _redfishobj.put(smartstorage_uri_config, deleteAlljson)
     check_response(resp,_redfishobj)
-
+    print(resp)
     return resp.status
 
 
@@ -526,7 +528,7 @@ if __name__ == "__main__":
     parser.add_argument('-p','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
     parser.add_argument('-m','--uri',dest='media_url',action="store",help="HTTP Server URI",default="http://172.29.169.106/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso")
     parser.add_argument('-o','--os',dest='os',help="OS install only",action='store_true')
-    parser.add_argument('-d','--drives',dest='logical_drives',action="store_true",help="Get Logical Drives olny")
+    parser.add_argument('-d','--drives',dest='logical_drives',action="store_true",help="Get Logical Drives only")
 
     args = parser.parse_args()
     system_url = "https://" + args.ilo_address
@@ -546,8 +548,8 @@ if __name__ == "__main__":
         sys.exit()
     Att_bios = {'ExtendedMemTest': 'Disabled', 'InternalSDCardSlot': 'Disabled','AutoPowerOn': 'PowerOn' \
                 , 'PostF1Prompt': 'Delayed20Sec', 'BootMode': 'Uefi', 'FlexLom1Enable': 'Auto', \
-                'RedundantPowerSupply': 'HighEfficiencyAuto', 'PciSlot1Enable': 'HighEfficiencyAuto' \
-                , 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
+                'RedundantPowerSupply': 'BalancedMode', 'PciSlot1Enable': 'HighEfficiencyAuto', \
+                 'WorkloadProfile': 'HighPerformanceCompute(HPC)', 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
 
     AttributesElements = Att_bios.items()
     for ATTRIBUTE, ATTRIBUTE_VAL in AttributesElements:
@@ -558,8 +560,14 @@ if __name__ == "__main__":
 
     # Disable PXE to all NICS on board
     Nics = []
+    # for val, att in bios_res['Attributes'].items():
+    #     if re.match(r'^Slot\dNic*', val):
+    #         Nics.append(val)
+    # for nic in Nics:
+    #     change_bios_setting(REDFISHOBJ, nic, "Disabled")
+
     for val, att in bios_res['Attributes'].items():
-        if re.match(r'^Slot\dNic*', val):
+        if re.match(r'^NicBoot*', val):
             Nics.append(val)
     for nic in Nics:
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
@@ -574,12 +582,14 @@ if __name__ == "__main__":
         REDFISHOBJ.logout()
         sys.exit()
 
+    # reboot_server(REDFISHOBJ)
     # get_SmartArray_Drives(REDFISHOBJ)
     # delete_SmartArray_LogicalDrives(REDFISHOBJ)
-    # createLogicalDrive(REDFISHOBJ)
+    createLogicalDrive(REDFISHOBJ)
     # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
     reboot_server(REDFISHOBJ)
-    mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+    # mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+
 
 
 
