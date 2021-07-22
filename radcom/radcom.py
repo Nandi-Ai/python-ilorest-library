@@ -97,6 +97,7 @@ def change_bios_setting(_redfishobj, bios_property, property_value):
                 bios_uri = instance['@odata.id']
                 bios_data = _redfishobj.get(bios_uri)
                 break
+    print(bios_data)
     bios_res = bios_data.obj
     if bios_uri:
         #BIOS settings URI is needed
@@ -534,7 +535,7 @@ if __name__ == "__main__":
     system_url = "https://" + args.ilo_address
 
     #specify the type of content the media represents
-    MEDIA_TYPE = "CD" #current possible options: Floppy, USBStick, CD, DVD
+    MEDIA_TYPE = "DVD" #current possible options: Floppy, USBStick, CD, DVD
 
     DISABLE_RESOURCE_DIR = False
 
