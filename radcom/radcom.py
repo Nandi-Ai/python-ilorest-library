@@ -224,7 +224,7 @@ def create_logicaldrive_json(Disks):
     # logicalDrive['StripSizeBytes'] = 262144
     logicalDrive['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(string.digits) for i in range(5)))
     logicalDrive['Accelerator'] = 'ControllerCache'
-    logicalDrive['LegacyBootPriority'] = 'All'
+    # logicalDrive['LegacyBootPriority'] = 'All'
 
     # print(json.dumps(logicalDrive, indent=4))
     #resp = _redfishobj.put(smartstorage_uri_config, body)
