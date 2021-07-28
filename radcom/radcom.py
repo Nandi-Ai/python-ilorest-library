@@ -6,6 +6,7 @@ from redfish.rest.v1 import ServerDownOrUnreachableError
 
 from get_resource_directory import get_resource_directory
 
+raw_input = input
 
 def reboot_ilo(_redfishobj):
     ilo_reboot_uri = None
@@ -86,7 +87,7 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                 # print(virtual_media_eject_uri)
                 post_body = {"Image": iso_url}
                 if iso_url:
-                    # power_off_server(_redfishobj)
+                    power_off_server(_redfishobj)
                     eject = _redfishobj.post(virtual_media_eject_uri, {})
                     print('eject status: {}'.format(eject.status))
                     print('Mounting virtual media...')
@@ -181,7 +182,7 @@ def check_response(resp,_redfishobj):
         elif 'Success' in error_msg:
             print("Success!")
         else:
-            print("Other reponse on error")
+            print(f"Other reponse on error: {error_msg}")
     else:
         print ("Didn't find error")
 
@@ -246,6 +247,7 @@ def create_logicaldrive_body(disks):
     elif len(disks) == 2:
         body["LogicalDrives"].append(create_logicaldrive_json(disks))
     # print(json.dumps(body, indent=4))
+    body["LogicalDrives"][0]['LegacyBootPriority'] = 'All'
 
     return body
 
