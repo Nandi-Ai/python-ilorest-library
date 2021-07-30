@@ -1,10 +1,59 @@
-import argparse, time
+import argparse
+from time import time, sleep
 import sys, json, re, random, string
 from redfish import RedfishClient
 from redfish.rest.v1 import ServerDownOrUnreachableError
 
 from get_resource_directory import get_resource_directory
 
+raw_input = input
+
+def reboot_ilo(_redfishobj):
+    ilo_reboot_uri = None
+    resource_instances = get_resource_directory(_redfishobj)
+    if DISABLE_RESOURCE_DIR or not resource_instances:
+        # if we do not have a resource directory or want to force it's non use to find the
+        # relevant URI
+
+        managers_uri = _redfishobj.root.obj['Managers']['@odata.id']
+        # managers_response = _redfishobj.get(managers_uri)
+        # managers_members_uri = next(iter(managers_response.obj['Members']))['@odata.id']
+        # data = _redfishobj.get(managers_members_uri)
+        # if data:
+        #     ilo_reboot_uri = data.obj['Actions']['#Manager.Reset']['target']
+        #     print(ilo_reboot_uri)
+
+
+    else:
+        for instance in resource_instances:
+            # Use Resource directory to find the relevant URI
+            if '#ManagerCollection.' in instance['@odata.type']:
+                managers_uri = instance['@odata.id']
+                print(managers_uri)
+    if managers_uri:
+        managers_response = _redfishobj.get(managers_uri)
+        #  print(managers_response)
+        managers_members_uri = managers_response.obj['Members']
+        for member in managers_members_uri:
+            data = _redfishobj.get(member['@odata.id'])
+            if data:
+                ilo_reboot_uri = data.obj['Actions']['#Manager.Reset']['target']
+                post_body = {}
+                resp = _redfishobj.post(ilo_reboot_uri, post_body)
+                # print(ilo_reboot_uri)
+                if resp.status == 400:
+                    try:
+                        print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                         sort_keys=True))
+                    except Exception as excp:
+                        print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                         sort_keys=True))
+                        sys.stderr.write("A response error occurred, unable to access iLO"
+                                         "Extended Message Info...")
+                elif resp.status != 200:
+                    sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+                else:
+                    print("Success!\n")
 
 def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_server_reset):
 # mounting virtual media for HPE iLO systems
@@ -34,9 +83,11 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                 # i'm not sure that i do it correctly
                 virtual_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
                 virtual_media_eject_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
+
+                # print(virtual_media_eject_uri)
                 post_body = {"Image": iso_url}
                 if iso_url:
-                    # power_off_server(_redfishobj)
+                    power_off_server(_redfishobj)
                     eject = _redfishobj.post(virtual_media_eject_uri, {})
                     print('eject status: {}'.format(eject.status))
                     print('Mounting virtual media...')
@@ -76,7 +127,6 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                     #         print(json.dumps(boot_resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
                     #                          sort_keys=True))
                 break
-
 
 def change_bios_setting(_redfishobj, bios_property, property_value):
     #change bios properties in the action settings
@@ -126,13 +176,14 @@ def check_response(resp,_redfishobj):
     if resp.obj['error']:
         error_msg = (json.dumps(resp.obj['error']['@Message.ExtendedInfo'][0].get("MessageId"), indent=4,
                                 sort_keys=True))
+        # print(error_msg)
         if 'SystemResetRequired' in error_msg:
-            print("Restarting server!")
+            print("Restarting server!\n")
             reboot_server(_redfishobj)
         elif 'Success' in error_msg:
-            print("Success")
+            print("Success!")
         else:
-            print("Other reponse on error")
+            print(f"Other reponse on error: {error_msg}")
     else:
         print ("Didn't find error")
 
@@ -146,7 +197,7 @@ def get_logicalvolume_actions(volumeIds):
     body["DataGuard"] = "Disabled"
  
     # print(body)
-    print(json.dumps(body, indent=4, sort_keys=True))
+    # print(json.dumps(body, indent=4, sort_keys=True))
     return body
 
 def create_logicaldrive_json(Disks):
@@ -174,7 +225,7 @@ def create_logicaldrive_json(Disks):
     # logicalDrive['StripSizeBytes'] = 262144
     logicalDrive['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(string.digits) for i in range(5)))
     logicalDrive['Accelerator'] = 'ControllerCache'
-    logicalDrive['LegacyBootPriority'] = 'All'
+    # logicalDrive['LegacyBootPriority'] = 'All'
 
     # print(json.dumps(logicalDrive, indent=4))
     #resp = _redfishobj.put(smartstorage_uri_config, body)
@@ -185,6 +236,8 @@ def create_logicaldrive_body(disks):
     # creating logical drive disks with sorting the disks for which raid
     body = dict()
     logicalDrive = dict()
+    body['DriveWriteCache'] = 'Enabled'
+    body['DriveWriteCacheUnconfigured'] = 'Enabled'
     body['DataGuard'] = "Permissive"
     body["LogicalDrives"] = list()
     if len(disks) > 2:
@@ -194,10 +247,10 @@ def create_logicaldrive_body(disks):
         body["LogicalDrives"].append(create_logicaldrive_json(raid10_loc))
     elif len(disks) == 2:
         body["LogicalDrives"].append(create_logicaldrive_json(disks))
-    print(json.dumps(body, indent=4))
+    # print(json.dumps(body, indent=4))
+    body["LogicalDrives"][0]['LegacyBootPriority'] = 'All'
 
     return body
-
 
 def createLogicalDrive(_redfishobj):
     # Creates a new logical drive on the selected controller
@@ -222,27 +275,37 @@ def createLogicalDrive(_redfishobj):
                 # sys.stdout.write("Logical Drive URIs for Smart Storage Array Controller " \
                   #  "'%s\' : \n" % smartstorage_resp.get('Id'))
                 PysicalDrives_uri = str(smartstorage_resp.Links['PhysicalDrives']['@odata.id'])
-                print(PysicalDrives_uri)
+                # print(PysicalDrives_uri)
                 Pysicaldrives_resp = _redfishobj.get(PysicalDrives_uri)
                 if not Pysicaldrives_resp.dict['Members']:
                     sys.stderr.write("\tPysical drives are not available for this controller.\n")
                 for drives in Pysicaldrives_resp.dict['Members']:
-                    sys.stdout.write("\t An associated logical drive: %s\n" % drives)
+                    # sys.stdout.write("\t An associated logical drive: %s\n" % drives)
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
                     # drive_ids.append(drive_data["VolumeUniqueIdentifier"])
-                   # print(drive_data["Location"])
+                    # print(drive_data["Location"])
                     drive_locations.append(drive_data)
                 # print(totalStorage)
                 #print(drive_locations)
 
             elif '#SmartStorageConfig.' in instance['@odata.type']:
                smartstorage_uri_config = instance['@odata.id']
-               print(smartstorage_uri_config)
+                #print(smartstorage_uri_config)
                # print("uri")
         body = create_logicaldrive_body(drive_locations)
+        print("\nCreating the Logical Drive...\n")
         resp = _redfishobj.put(smartstorage_uri_config, body)
+        if resp.status == 200:
+            for drive in body['LogicalDrives']:
+                print("Logical Drive: {}".format(drive['LogicalDriveName']))
+                print("Size of the volume is: {} GiB".format(drive['CapacityGiB']))
+                print("Raid Type: {}".format(drive['Raid']))
+                print("Associated physical drives:")
+                for disk in drive['DataDrives']:
+                    print(disk)
+                print('\n')
         check_response(resp,_redfishobj)
-        print(resp)
+        #print(resp)
 
 def change_temporary_boot_order(_redfishobj, boottarget):
     #getting response boot - Alter the temporary boot order
@@ -325,8 +388,6 @@ def power_off_server(_redfishobj):
             print("Success!\n")
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
-
-
 def reboot_server(_redfishobj):
     # Reboot a server
 
@@ -361,11 +422,10 @@ def reboot_server(_redfishobj):
         elif resp.status != 200:
             sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
         else:
+
+            # print(json.dumps(resp.dict, indent=4, sort_keys=True))
+            sleep(20)
             print("Success!\n")
-            print(json.dumps(resp.dict, indent=4, sort_keys=True))
-            time.sleep(25)
-
-
 
 def delete_SmartArray_LogicalDrives(_redfishobj):
     #deleting an iLO logical drives
@@ -395,76 +455,80 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
             if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
                 smartstorage_uri = instance['@odata.id']
                 smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
-                sys.stdout.write("Logical Drive URIs for Smart Storage Array Controller " \
-                    "'%s\' : \n" % smartstorage_resp.get('Id'))
+                # sys.stdout.write("Logical Drive URIs for Smart Storage Array Controller " \
+                #     "'%s\' : \n" % smartstorage_resp.get('Id'))
                 logicaldrives_uri = str(smartstorage_resp.Links['LogicalDrives']['@odata.id'])
                 logicaldrives_resp = _redfishobj.get(logicaldrives_uri)
                 if not logicaldrives_resp.dict['Members']:
                     sys.stderr.write("\tLogical drives are not available for this controller.\n")
                     return()
                 for drives in logicaldrives_resp.dict['Members']:
-                    sys.stdout.write("\t An associated logical drive: %s\n" % drives)
+                    # sys.stdout.write("\t An associated logical drive: %s\n" % drives)
                     drive_data = _redfishobj.get(drives['@odata.id']).dict
                     drive_ids.append(str(drive_data["VolumeUniqueIdentifier"]))
-                    print(drive_data["VolumeUniqueIdentifier"])
+                    # print(drive_data["VolumeUniqueIdentifier"])
             elif '#SmartStorageConfig.' in instance['@odata.type']:
                 smartstorage_uri_config = instance['@odata.id']
                 # print("uri")
                 # print(smartstorage_uri_config)
 
     # body = get_logicalvolume_actions(drive_ids)
-    print(smartstorage_uri_config)
+    # print(smartstorage_uri_config)
     # print(body)
     # res = _redfishobj.put("https://febm-probe3.ilo.ps.radcom.co.il/redfish/v1/Systems/1/SmartStorageConfig/Settings/", )
+    print("Deleting the drive...\n")
     resp = _redfishobj.put(smartstorage_uri_config, deleteAlljson)
     check_response(resp,_redfishobj)
-    print(resp)
+    # print(resp)
     return resp.status
 
+# def get_SmartArray_Drives(_redfishobj):
+#     #List all logical drives associated with a smart array controller
+#
+#     smartstorage_response = []
+#     smartarraycontrollers = dict()
+#
+#     resource_instances = get_resource_directory(_redfishobj)
+#     if DISABLE_RESOURCE_DIR or not resource_instances:
+#         systems_u = None
+#         systems_members_response = systems_path(systems_u)
+#         smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
+#                                                                 ['SmartStorage']['@odata.id']
+#         smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links\
+#                                                                 ['ArrayControllers']['@odata.id']
+#         smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
+#         print(smartstorage_response)
+#     else:
+#         for instance in resource_instances:
+#             #Use Resource directory to find the relevant URI
+#             if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
+#                 smartstorage_uri = instance['@odata.id']
+#                 smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
+#                 # sys.stdout.write("Physical Drive URIs for Smart Storage Array Controller " \
+#                 #     "'%s\' : \n" % smartstorage_resp.get('Id'))
+#                 physicaldrives_uri = smartstorage_resp.Links['PhysicalDrives']['@odata.id']
+#                 logicaldrives_uri = smartstorage_resp.Links['LogicalDrives']['@odata.id']
+#                 physicaldrives_resp = _redfishobj.get(physicaldrives_uri)
+#                 logicaldrives_resp = _redfishobj.get(logicaldrives_uri)
+#
+#                 if not physicaldrives_resp.dict['Members']:
+#                     sys.stderr.write("\tPhysical drives are not available for this controller.\n")
+#                 for drives in physicaldrives_resp.dict['Members']:
+#                     # sys.stdout.write("\t An associated Physical drive: %s\n" % drives)
+#                     drive_data = _redfishobj.get(drives['@odata.id']).dict
+#                     #print(json.dumps(drive_data, indent=4, sort_keys=True))
+#
+#                 if logicaldrives_resp.dict['Members']:
+#                     for logicalDrive in logicaldrives_resp.dict['Members']:
+#                         print("Found Logical Drive:\n")
+#                         drive_data = _redfishobj.get(logicalDrive['@odata.id']).dict
+#                         # print(json.dumps(drive_data, indent=4, sort_keys=True))
+#                         print("The name of the volume is: {}".format(drive_data['LogicalDriveName']))
+#                         print("The size of the volume is - {} MiB\n".format(drive_data['CapacityMiB']))
+#                         print("There are {} physical disks connected in Raid{}\n".format(physicaldrives_resp.dict['Members@odata.count'], drive_data['Raid']))
+#                 else:
+#                     print ("Couldn't find logical drives")
 
-
-
-def get_SmartArray_Drives(_redfishobj):
-    #List all logical drives associated with a smart array controller
-
-    smartstorage_response = []
-    smartarraycontrollers = dict()
-
-    resource_instances = get_resource_directory(_redfishobj)
-    if DISABLE_RESOURCE_DIR or not resource_instances:
-        systems_u = None
-        systems_members_response = systems_path(systems_u)
-        smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links\
-                                                                ['SmartStorage']['@odata.id']
-        smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links\
-                                                                ['ArrayControllers']['@odata.id']
-        smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
-        print(smartstorage_response)
-    else:
-        for instance in resource_instances:
-            #Use Resource directory to find the relevant URI
-            if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
-                smartstorage_uri = instance['@odata.id']
-                smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
-                sys.stdout.write("Physical Drive URIs for Smart Storage Array Controller " \
-                    "'%s\' : \n" % smartstorage_resp.get('Id'))
-                physicaldrives_uri = smartstorage_resp.Links['PhysicalDrives']['@odata.id']
-                logicaldrives_uri = smartstorage_resp.Links['LogicalDrives']['@odata.id']
-                physicaldrives_resp = _redfishobj.get(physicaldrives_uri)
-                logicaldrives_resp = _redfishobj.get(logicaldrives_uri)
-                if not physicaldrives_resp.dict['Members']:
-                    sys.stderr.write("\tPhysical drives are not available for this controller.\n")
-                for drives in physicaldrives_resp.dict['Members']:
-                    sys.stdout.write("\t An associated Physical drive: %s\n" % drives)
-                    drive_data = _redfishobj.get(drives['@odata.id']).dict
-                    #print(json.dumps(drive_data, indent=4, sort_keys=True))
-                if logicaldrives_resp.dict['Members']:
-                    for logicalDrive in logicaldrives_resp.dict['Members']:
-                        print("Found Logical drive:")
-                        drive_data = _redfishobj.get(logicalDrive['@odata.id']).dict
-                        print(json.dumps(drive_data, indent=4, sort_keys=True))
-                else:
-                    print ("Couldn't find logical drives")
 
 def systems_path(_redfishobj):
     resource_instances = get_resource_directory(_redfishobj)
@@ -477,7 +541,6 @@ def systems_path(_redfishobj):
         systems_members_response = _redfishobj.get(systems_members_uri)
 
         return (systems_members_response)
-
 
 def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
     #Obtain Smart Array controller encryption property data
@@ -515,6 +578,105 @@ def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
             if data in desired_properties:
                 sys.stdout.write("\t %s : %s\n" % (data, smartarraycontrollers[controller\
                                                                         ['@odata.id']].get(data)))
+
+def yes_or_no(question):
+    while "Answer is invalid":
+        reply = str(raw_input(question+' (y/n): ')).lower().strip()
+        if reply[0] == 'y':
+            print("\n")
+            return True
+        if reply[0] == 'n':
+            print('\n')
+            return False
+
+def get_SmartArray_PhysicalDrives(_redfishobj):
+    # List all logical drives associated with a smart array controller
+
+    smartstorage_response = []
+    smartarraycontrollers = dict()
+
+    resource_instances = get_resource_directory(_redfishobj)
+    if DISABLE_RESOURCE_DIR or not resource_instances:
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
+        smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links \
+            ['SmartStorage']['@odata.id']
+        smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links \
+            ['ArrayControllers']['@odata.id']
+        smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
+        print(smartstorage_response)
+    else:
+        drive_data = []
+        for instance in resource_instances:
+            # Use Resource directory to find the relevant URI
+            if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
+                smartstorage_uri = instance['@odata.id']
+                smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
+                # sys.stdout.write("Physical Drive URIs for Smart Storage Array Controller " \
+                #     "'%s\' : \n" % smartstorage_resp.get('Id'))
+                physicaldrives_uri = smartstorage_resp.Links['PhysicalDrives']['@odata.id']
+                physicaldrives_resp = _redfishobj.get(physicaldrives_uri)
+                if physicaldrives_resp.dict['Members']:
+                    for drive in physicaldrives_resp.dict['Members']:
+                        # sys.stdout.write("\t An associated Physical drive: %s\n" % drive)
+                        drive_data.append(_redfishobj.get(drive['@odata.id']).dict)
+                else:
+                    sys.stderr.write("\tPhysical drives are not available for this controller.\n")
+
+        return drive_data
+
+def get_SmartArray_LogicalDrives(_redfishobj):
+    # List all logical drives associated with a smart array controller
+
+    smartstorage_response = []
+    smartarraycontrollers = dict()
+
+    resource_instances = get_resource_directory(_redfishobj)
+    if DISABLE_RESOURCE_DIR or not resource_instances:
+        systems_u = None
+        systems_members_response = systems_path(systems_u)
+        smart_storage_uri = systems_members_response.obj.Oem.Hpe.Links \
+            ['SmartStorage']['@odata.id']
+        smart_storage_arraycontrollers_uri = _redfishobj.get(smart_storage_uri).obj.Links \
+            ['ArrayControllers']['@odata.id']
+        smartstorage_response = _redfishobj.get(smart_storage_arraycontrollers_uri).obj['Members']
+        print(smartstorage_response)
+    else:
+        drive_data = []
+        for instance in resource_instances:
+            # Use Resource directory to find the relevant URI
+            if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
+                smartstorage_uri = instance['@odata.id']
+                smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
+                # sys.stdout.write("Physical Drive URIs for Smart Storage Array Controller " \
+                #     "'%s\' : \n" % smartstorage_resp.get('Id'))
+                # print(smartstorage_resp.Links['LogicalDrives'])
+                logicaldrives_uri = smartstorage_resp.Links['LogicalDrives']['@odata.id']
+                logicaldrives_resp = _redfishobj.get(logicaldrives_uri)
+
+                if logicaldrives_resp.dict['Members']:
+                    for drive in logicaldrives_resp.dict['Members']:
+                        drive_data.append(_redfishobj.get(drive['@odata.id']).dict)
+                        # print(json.dumps(drive_data, indent=4, sort_keys=True))
+
+        return drive_data
+
+def print_SmartArray_Drives(_redfishobj):
+    #List all logical drives associated with a smart array controller
+    logical_drives = get_SmartArray_LogicalDrives(_redfishobj)
+    disks = get_SmartArray_PhysicalDrives(_redfishobj)
+
+    if logical_drives and disks:
+        for drive in logical_drives:
+            print("Found Logical Drive:\n")
+            print("The name of the volume is: {}".format(drive['LogicalDriveName']))
+            print("The size of the volume is - {} MiB\n".format(drive['CapacityMiB']))
+            print("There are {} physical disks connected in Raid{}:".format(len(disks), drive['Raid']))
+        for disk in disks:
+            print("Disk - {} , size - {} GB".format(disk["Location"],disk["CapacityGB"]))
+    else:
+        print ("Couldn't find logical drives")
+
 
 
 if __name__ == "__main__":
@@ -579,18 +741,69 @@ if __name__ == "__main__":
         sys.exit()
 
     if args.logical_drives:
-        get_SmartArray_Drives(REDFISHOBJ)
+        print_SmartArray_Drives(REDFISHOBJ)
         REDFISHOBJ.logout()
         sys.exit()
 
-    # reboot_server(REDFISHOBJ)
-    # get_SmartArray_Drives(REDFISHOBJ)
-    # delete_SmartArray_LogicalDrives(REDFISHOBJ)
-    createLogicalDrive(REDFISHOBJ)
-    # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
-    reboot_server(REDFISHOBJ)
-    # mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+    print('\n')
 
+    print_SmartArray_Drives(REDFISHOBJ)
+
+    AreLogicalDrives = get_SmartArray_LogicalDrives(REDFISHOBJ)
+    if AreLogicalDrives:
+        if yes_or_no("Do you want to delete and reconfigure Logical Drive?"):
+            delete_SmartArray_LogicalDrives(REDFISHOBJ)
+            print("Waiting for deletion of drives...")
+
+            hasVolumes=True
+            while hasVolumes:
+                try:
+                    hasVolumes= len(get_SmartArray_LogicalDrives(REDFISHOBJ)) > 0
+                except Exception as excp:
+                    pass
+                sleep(10 - time() % 10)
+                print('.')
+            print("Drives are deleted!")
+            createLogicalDrive(REDFISHOBJ)
+            print("Waiting for Logical drive creation")
+            while not hasVolumes:
+                try:
+                    hasVolumes = len(get_SmartArray_LogicalDrives(REDFISHOBJ)) > 0
+                except Exception as excp:
+                    pass
+                sleep(10 - time() % 10)
+                print('.')
+            print("Logical Drive is created!")
+    else:
+        if yes_or_no("Do you want to create and configure new Logical Drive?"):
+            createLogicalDrive(REDFISHOBJ)
+            print("Waiting for Logical drive creation")
+            hasVolumes = False
+            while not hasVolumes:
+                try:
+                    hasVolumes = len(get_SmartArray_LogicalDrives(REDFISHOBJ)) > 0
+                except Exception as excp:
+                    pass
+                sleep(10 - time() % 10)
+                print('.')
+            print("Logical Drive is created!")
+
+    print('\n')
+
+    if yes_or_no("Do you want to install OS?"):
+        mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+
+    # print_SmartArray_Drives(REDFISHOBJ)
+    # get_SmartArray_LogicalDrives(REDFISHOBJ)
+    # delete_SmartArray_LogicalDrives(REDFISHOBJ)
+    # createLogicalDrive(REDFISHOBJ)
+    # get_SmartArray_EncryptionSettings(REDFISHOBJ, DESIRED_PROPERTIES)
+    # reboot_server(REDFISHOBJ)
+    # mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+    # delete_SmartArray_LogicalDrives(REDFISHOBJ)
+    # createLogicalDrive(REDFISHOBJ)
+    # reboot_server(REDFISHOBJ)
+    # reboot_ilo(REDFISHOBJ)
 
 
 

@@ -33,7 +33,7 @@ running
 
 the main script for running is: **radcom.py**
 
-| Running webserver to create a container from the image:
+| **Running webserver to create a container from the image:**
 :code:`$ docker run -d -p 80:80  -v <local_image_path>:/usr/local/apache2/htdocs httpd`  
 
 | <local_image_path> : is the image folder location in the local OS.  
