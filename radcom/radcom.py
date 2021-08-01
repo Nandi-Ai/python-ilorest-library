@@ -114,6 +114,9 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                         sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
                     else:
                         print("Success!\n")
+                    boot_from = 'Cd'
+                    change_temporary_boot_order(_redfishobj, boot_from)
+
                         # print(json.dumps(resp.dict, indent=4, sort_keys=True))
                     # if boot_on_next_server_reset is not None:
                     #     patch_body = {}
@@ -356,21 +359,21 @@ def power_off_server(_redfishobj):
         print('went in else')
         for instance in resource_instances:
             # Use Resource directory to find the relevant URI
-            if '#HpeComputerSystemExt.' in instance['@odata.type']:
-                print('went inside if')
-                systems_uri = instance['@odata.id']
-                systems_members_response = _redfishobj.get(systems_uri)
-                print(systems_members_response)
+            if '#ComputerSystem' in instance['@odata.type']:
+                if not '#ComputerSystemCollection' in instance['@odata.type']:
+                    print('went inside if')
+                    systems_uri = instance['@odata.id']
+                    systems_members_response = _redfishobj.get(systems_uri)
 
     if systems_members_response:
-        system_reboot_uri = systems_members_response.obj['Actions']['#HpeComputerSystemExt.PowerButton']['target']
-        print(system_reboot_uri)
+        system_reboot_uri = systems_members_response.obj['Actions']['#ComputerSystem.Reset']['target']
+        # print(system_reboot_uri)
         body = dict()
-        body['Action'] = 'HpeComputerSystemExt.PowerButton'
-        body['PushType'] = "Press"
+        body['Action'] = '#ComputerSystem.Reset'
+        body['ResetType'] = "PushPowerButton"
         resp = _redfishobj.post(system_reboot_uri, body)
         print('server power off')
-        print(resp.status)
+        # print(resp.status)
 
         # If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         # error message to see what went wrong
@@ -791,7 +794,8 @@ if __name__ == "__main__":
 
     if yes_or_no("Do you want to install OS?"):
         mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
-
+    
+    # change_temporary_boot_order(REDFISHOBJ, MEDIA_TYPE)
     # print_SmartArray_Drives(REDFISHOBJ)
     # get_SmartArray_LogicalDrives(REDFISHOBJ)
     # delete_SmartArray_LogicalDrives(REDFISHOBJ)
