@@ -87,7 +87,7 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                 # print(virtual_media_eject_uri)
                 post_body = {"Image": iso_url}
                 if iso_url:
-                    power_off_server(_redfishobj)
+                    power_off_server(_redfishobj, 'off')
                     eject = _redfishobj.post(virtual_media_eject_uri, {})
                     print('eject status: {}'.format(eject.status))
                     print('Mounting virtual media...')
@@ -344,13 +344,17 @@ def change_temporary_boot_order(_redfishobj, boottarget):
     else:
         print("\nSuccess!\n")
         #print(json.dumps(resp.dict, indent=4, sort_keys=True))
-        if systems_members_response:
-            print("\n\nShowing boot override target:\n\n")
-            print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
+        # if systems_members_response:
+        #     print("\n\nShowing boot override target:\n\n")
+        #     print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
 
-def power_off_server(_redfishobj):
+def power_off_server(_redfishobj, state):
     systems_members_response = None
-    print("POWERING OFF THE SERVER")
+
+    if state == 'off':
+        print("POWERING OFF THE SERVER")
+    else:
+        print("POWERING ON THE SERVER")
     resource_instances = get_resource_directory(_redfishobj)
     if DISABLE_RESOURCE_DIR or not resource_instances:
         systems_u = None
@@ -370,9 +374,15 @@ def power_off_server(_redfishobj):
         # print(system_reboot_uri)
         body = dict()
         body['Action'] = '#ComputerSystem.Reset'
-        body['ResetType'] = "PushPowerButton"
+        if state == 'off':
+            body['ResetType'] = "PushPowerButton"
+        else:
+            body['ResetType'] = "On"
         resp = _redfishobj.post(system_reboot_uri, body)
-        print('server power off')
+        if state == 'off':
+            print('server power off')
+        else:
+            print('server power on')
         # print(resp.status)
 
         # If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
@@ -388,7 +398,7 @@ def power_off_server(_redfishobj):
             sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
         else:
             print("Success!\n")
-            print(json.dumps(resp.dict, indent=4, sort_keys=True))
+            # print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
 def reboot_server(_redfishobj):
     # Reboot a server
@@ -808,6 +818,6 @@ if __name__ == "__main__":
     # reboot_server(REDFISHOBJ)
     # reboot_ilo(REDFISHOBJ)
 
-
+    power_off_server(REDFISHOBJ, 'on')
 
     REDFISHOBJ.logout()
