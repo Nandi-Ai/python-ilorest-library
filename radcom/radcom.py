@@ -594,7 +594,7 @@ def get_SmartArray_EncryptionSettings(_redfishobj, desired_properties):
 def yes_or_no(question):
     while "Answer is invalid":
         reply = str(raw_input(question+' (y/n): ')).lower().strip()
-        if reply[0] == 'y':
+        if reply[0] == 'y' or args.auto_yes == '1':
             print("\n")
             return True
         if reply[0] == 'n':
@@ -698,6 +698,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = "Script to upload and flash NVMe FW")
 
+    parser.add_argument('-y','--yes',dest='auto_yes',action="store",help="Auto yes 1 to enable",default="0")
     parser.add_argument('-i','--ilo',dest='ilo_address',action="store",help="iLO IP address or FQDN",default="febm-probe.ilo.ps.radcom.co.il")
     parser.add_argument('-u','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
     parser.add_argument('-p','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
