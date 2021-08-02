@@ -764,7 +764,7 @@ if __name__ == "__main__":
 
     AreLogicalDrives = get_SmartArray_LogicalDrives(REDFISHOBJ)
     if AreLogicalDrives:
-        if yes_or_no("Do you want to delete and reconfigure Logical Drive?"):
+        if args.auto_yes == '1' or yes_or_no("Do you want to delete and reconfigure Logical Drive?"):
             delete_SmartArray_LogicalDrives(REDFISHOBJ)
             print("Waiting for deletion of drives...")
 
@@ -788,7 +788,7 @@ if __name__ == "__main__":
                 print('.')
             print("Logical Drive is created!")
     else:
-        if yes_or_no("Do you want to create and configure new Logical Drive?"):
+        if args.auto_yes == '1' or yes_or_no("Do you want to create and configure new Logical Drive?"):
             createLogicalDrive(REDFISHOBJ)
             print("Waiting for Logical drive creation")
             hasVolumes = False
@@ -803,7 +803,7 @@ if __name__ == "__main__":
 
     print('\n')
 
-    if yes_or_no("Do you want to install OS?"):
+    if args.auto_yes == '1' or yes_or_no("Do you want to install OS?"):
         mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
     
     # change_temporary_boot_order(REDFISHOBJ, MEDIA_TYPE)
