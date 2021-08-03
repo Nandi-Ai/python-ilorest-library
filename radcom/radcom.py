@@ -114,8 +114,10 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                         sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
                     else:
                         print("Success!\n")
-                    boot_from = 'Cd'
-                    change_temporary_boot_order(_redfishobj, boot_from)
+                        boot_from = 'Cd'
+                        change_temporary_boot_order(_redfishobj, boot_from)
+                        
+                    power_off_server(_redfishobj, 'on')
 
                         # print(json.dumps(resp.dict, indent=4, sort_keys=True))
                     # if boot_on_next_server_reset is not None:
@@ -329,14 +331,13 @@ def change_temporary_boot_order(_redfishobj, boottarget):
         systems_members_response = systems_path(systems_u)
     else:
         for instance in resource_instances:
-            print(instance)
             if '#ComputerSystem.' in instance['@odata.type']:
                 systems_members_uri = instance['@odata.id']
                 systems_members_response = _redfishobj.get(systems_members_uri)
 
-    if systems_members_response:
-        print("\n\nShowing bios attributes before changes:\n\n")
-        print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
+#    if systems_members_response:
+#        print("\n\nShowing bios attributes before changes:\n\n")
+#        print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
     body = {'Boot': {'BootSourceOverrideTarget': boottarget}}
     resp = _redfishobj.patch(systems_members_uri, body)
 
@@ -352,10 +353,10 @@ def change_temporary_boot_order(_redfishobj, boottarget):
         sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
     else:
         print("\nSuccess!\n")
-        print(json.dumps(resp.dict, indent=4, sort_keys=True))
-        if systems_members_response:
-            print("\n\nShowing boot override target:\n\n")
-            print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
+#        print(json.dumps(resp.dict, indent=4, sort_keys=True))
+#        if systems_members_response:
+#            print("\n\nShowing boot override target:\n\n")
+#            print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
 
 def power_off_server(_redfishobj, state):
     systems_members_response = None
@@ -380,7 +381,7 @@ def power_off_server(_redfishobj, state):
 
     if systems_members_response:
         system_reboot_uri = systems_members_response.obj['Actions']['#ComputerSystem.Reset']['target']
-        # print(system_reboot_uri)
+        # print(systems_members_response.obj['Actions']['#ComputerSystem.Reset'])
         body = dict()
         body['Action'] = '#ComputerSystem.Reset'
         if state == 'off':
@@ -392,7 +393,6 @@ def power_off_server(_redfishobj, state):
             print('server power off')
         else:
             print('server power on')
-        # print(resp.status)
 
         # If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
         # error message to see what went wrong
@@ -834,7 +834,5 @@ if __name__ == "__main__":
     # createLogicalDrive(REDFISHOBJ)
     # reboot_server(REDFISHOBJ)
     # reboot_ilo(REDFISHOBJ)
-
-    power_off_server(REDFISHOBJ, 'on')
 
     REDFISHOBJ.logout()
