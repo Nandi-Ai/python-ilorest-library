@@ -181,7 +181,11 @@ def check_response(resp,_redfishobj):
         # print(error_msg)
         if 'SystemResetRequired' in error_msg:
             print("Restarting server!\n")
-            reboot_server(_redfishobj)
+            resp = reboot_server(_redfishobj)
+            error_msg = (json.dumps(resp.obj['error']['@Message.ExtendedInfo'][0].get("MessageId"), indent=4,
+                                sort_keys=True))
+            if 'InvalidOperationForSystemState' in error_msg:
+                power_off_server(_redfishobj, 'on')
         elif 'Success' in error_msg:
             print("Success!")
         else:
@@ -249,8 +253,8 @@ def create_logicaldrive_body(disks):
         body["LogicalDrives"].append(create_logicaldrive_json(raid10_loc))
     elif len(disks) == 2:
         body["LogicalDrives"].append(create_logicaldrive_json(disks))
-    # print(json.dumps(body, indent=4))
-    body["LogicalDrives"][0]['LegacyBootPriority'] = 'All'
+    print("\n\nBODY of data dictionary: {}\n".format(json.dumps(body, indent=4)))
+    #body["LogicalDrives"][0]['LegacyBootPriority'] = 'All'
 
     return body
 
@@ -271,32 +275,38 @@ def createLogicalDrive(_redfishobj):
         totalStorage = 0
         for instance in resource_instances:
             #Use Resource directory to find the relevant URI
-            if '#HpeSmartStorageArrayController.' in instance['@odata.type']:
+            if 'SmartStorageArrayController' in instance['@odata.type']:
+                # print( "\n\n I FOUND DATA-TYPE with ArrayController\n\n" )
                 smartstorage_uri = instance['@odata.id']
                 smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
-                # sys.stdout.write("Logical Drive URIs for Smart Storage Array Controller " \
-                  #  "'%s\' : \n" % smartstorage_resp.get('Id'))
+                if smartstorage_resp.get('Id') == None:
+                    break
+                # sys.stdout.write("Physical Drive URIs for Smart Storage Array Controller " \
+                #    "'%s\' : \n" % smartstorage_resp.get('Id'))
                 PysicalDrives_uri = str(smartstorage_resp.Links['PhysicalDrives']['@odata.id'])
-                # print(PysicalDrives_uri)
+                print("Phy Drive location: {}".format(PysicalDrives_uri))
                 Pysicaldrives_resp = _redfishobj.get(PysicalDrives_uri)
-                if not Pysicaldrives_resp.dict['Members']:
+                if len( Pysicaldrives_resp.dict['Members'] )== 0:
                     sys.stderr.write("\tPysical drives are not available for this controller.\n")
-                for drives in Pysicaldrives_resp.dict['Members']:
-                    # sys.stdout.write("\t An associated logical drive: %s\n" % drives)
-                    drive_data = _redfishobj.get(drives['@odata.id']).dict
-                    # drive_ids.append(drive_data["VolumeUniqueIdentifier"])
-                    # print(drive_data["Location"])
-                    drive_locations.append(drive_data)
-                # print(totalStorage)
-                #print(drive_locations)
+                else:
+                    for drives in Pysicaldrives_resp.dict['Members']:
+                        drive_data = _redfishobj.get(drives['@odata.id']).dict
+                        print("\nPhy Drive data: \n{}\n".format(drive_data))
+                        drive_locations.append(drive_data)
+    
+                # drive_ids.append(drive_data["VolumeUniqueIdentifier"])
+            elif 'SmartStorageConfig' in instance['@odata.type']:
+               # print( "\n\n I FOUND DATA-TYPE with SmartStorageConfig\n\n" )
+               if "smartstorageconfig/settings" in instance['@odata.id']:
+                   smartstorage_uri_config = instance['@odata.id']
+                   # print(smartstorage_uri_config)
+                   # print("uri")
 
-            elif '#SmartStorageConfig.' in instance['@odata.type']:
-               smartstorage_uri_config = instance['@odata.id']
-                #print(smartstorage_uri_config)
-               # print("uri")
         body = create_logicaldrive_body(drive_locations)
+        print("\n\n BODY TO Put() \n{}".format( body ) )
         print("\nCreating the Logical Drive...\n")
-        resp = _redfishobj.put(smartstorage_uri_config, body)
+        print("\n Put() using URI : {}".format( smartstorage_uri_config ) )
+        resp = _redfishobj.put(smartstorage_uri_config, body) 
         if resp.status == 200:
             for drive in body['LogicalDrives']:
                 print("Logical Drive: {}".format(drive['LogicalDriveName']))
@@ -304,10 +314,8 @@ def createLogicalDrive(_redfishobj):
                 print("Raid Type: {}".format(drive['Raid']))
                 print("Associated physical drives:")
                 for disk in drive['DataDrives']:
-                    print(disk)
-                print('\n')
+                    print("\nPhy Disk to use: {}\n".format(disk))
         check_response(resp,_redfishobj)
-        #print(resp)
 
 def change_temporary_boot_order(_redfishobj, boottarget):
     #getting response boot - Alter the temporary boot order
@@ -438,6 +446,7 @@ def reboot_server(_redfishobj):
             # print(json.dumps(resp.dict, indent=4, sort_keys=True))
             sleep(20)
             print("Success!\n")
+    return resp
 
 def delete_SmartArray_LogicalDrives(_redfishobj):
     #deleting an iLO logical drives
@@ -481,8 +490,10 @@ def delete_SmartArray_LogicalDrives(_redfishobj):
                     # print(drive_data["VolumeUniqueIdentifier"])
             elif '#SmartStorageConfig.' in instance['@odata.type']:
                 smartstorage_uri_config = instance['@odata.id']
+                if "settings" in smartstorage_uri_config:
                 # print("uri")
-                # print(smartstorage_uri_config)
+                    print(smartstorage_uri_config)
+                    break
 
     # body = get_logicalvolume_actions(drive_ids)
     # print(smartstorage_uri_config)
@@ -678,16 +689,20 @@ def print_SmartArray_Drives(_redfishobj):
     logical_drives = get_SmartArray_LogicalDrives(_redfishobj)
     disks = get_SmartArray_PhysicalDrives(_redfishobj)
 
-    if logical_drives and disks:
+    if len(logical_drives)!=0:
         for drive in logical_drives:
             print("Found Logical Drive:\n")
             print("The name of the volume is: {}".format(drive['LogicalDriveName']))
             print("The size of the volume is - {} MiB\n".format(drive['CapacityMiB']))
             print("There are {} physical disks connected in Raid{}:".format(len(disks), drive['Raid']))
+    else:
+        print( "Couldn't find any LOGICAL drives." )
+
+    if len(disks)!=0:
         for disk in disks:
             print("Disk - {} , size - {} GB".format(disk["Location"],disk["CapacityGB"]))
     else:
-        print ("Couldn't find logical drives")
+        print( "Couldn't find PHYISCAL drives.")
 
 
 
@@ -783,7 +798,7 @@ if __name__ == "__main__":
                 try:
                     hasVolumes = len(get_SmartArray_LogicalDrives(REDFISHOBJ)) > 0
                 except Exception as excp:
-                    pass
+                    print(excp)
                 sleep(10 - time() % 10)
                 print('.')
             print("Logical Drive is created!")
@@ -796,7 +811,7 @@ if __name__ == "__main__":
                 try:
                     hasVolumes = len(get_SmartArray_LogicalDrives(REDFISHOBJ)) > 0
                 except Exception as excp:
-                    pass
+                    print(excp)
                 sleep(10 - time() % 10)
                 print('.')
             print("Logical Drive is created!")
