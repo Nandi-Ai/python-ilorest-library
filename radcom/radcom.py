@@ -329,13 +329,14 @@ def change_temporary_boot_order(_redfishobj, boottarget):
         systems_members_response = systems_path(systems_u)
     else:
         for instance in resource_instances:
+            print(instance)
             if '#ComputerSystem.' in instance['@odata.type']:
                 systems_members_uri = instance['@odata.id']
                 systems_members_response = _redfishobj.get(systems_members_uri)
 
     if systems_members_response:
         print("\n\nShowing bios attributes before changes:\n\n")
-        #print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
+        print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
     body = {'Boot': {'BootSourceOverrideTarget': boottarget}}
     resp = _redfishobj.patch(systems_members_uri, body)
 
@@ -351,10 +352,10 @@ def change_temporary_boot_order(_redfishobj, boottarget):
         sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
     else:
         print("\nSuccess!\n")
-        #print(json.dumps(resp.dict, indent=4, sort_keys=True))
-        # if systems_members_response:
-        #     print("\n\nShowing boot override target:\n\n")
-        #     print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
+        print(json.dumps(resp.dict, indent=4, sort_keys=True))
+        if systems_members_response:
+            print("\n\nShowing boot override target:\n\n")
+            print(json.dumps(systems_members_response.dict.get('Boot'), indent=4, sort_keys=True))
 
 def power_off_server(_redfishobj, state):
     systems_members_response = None
