@@ -133,6 +133,59 @@ def mount_virtual_media_iso(_redfishobj, iso_url, media_type, boot_on_next_serve
                     #                          sort_keys=True))
                 break
 
+def mount_network_media_iso(_redfishobj, iso_url, media_type):
+# mounting virtual media for HPE iLO systems
+    virtual_media_uri = None
+    virtual_media_response = []
+
+    resource_instances = get_resource_directory(_redfishobj)
+    if DISABLE_RESOURCE_DIR or not resource_instances:
+        #if we do not have a resource directory or want to force it's non use to find the
+        #relevant URI
+        managers_uri = _redfishobj.root.obj['Managers']['@odata.id']
+        managers_response = _redfishobj.get(managers_uri)
+        managers_members_uri = next(iter(managers_response.obj['Members']))['@odata.id']
+        managers_members_response = _redfishobj.get(managers_members_uri)
+        virtual_media_uri = managers_members_response.obj['VirtualMedia']['@odata.id']
+    else:
+        for instance in resource_instances:
+            #Use Resource directory to find the relevant URI
+            if '#VirtualMediaCollection.' in instance['@odata.type']:
+                virtual_media_uri = instance['@odata.id']
+
+    if virtual_media_uri:
+        virtual_media_response = _redfishobj.get(virtual_media_uri)
+        for virtual_media_slot in virtual_media_response.obj['Members']:
+            data = _redfishobj.get(virtual_media_slot['@odata.id'])
+            if media_type in data.dict['MediaTypes']:
+                # i'm not sure that i do it correctly
+                virtual_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
+                virtual_media_eject_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
+
+                # print(virtual_media_eject_uri)
+                post_body = {"Image": iso_url}
+                if iso_url:
+                    eject = _redfishobj.post(virtual_media_eject_uri, {})
+                    print('eject status: {}'.format(eject.status))
+                    print('Mounting virtual media...')
+                    resp = _redfishobj.post(virtual_media_mount_uri, post_body)
+                    print('insert status: {}'.format(resp.status))
+                    if resp.status == 400:
+                        try:
+                            print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                                                                    sort_keys=True))
+                        except Exception as excp:
+                            print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                             sort_keys=True))
+                            sys.stderr.write("A response error occurred, unable to access iLO"
+                                             "Extended Message Info...")
+                    elif resp.status != 200:
+                        sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+                    else:
+                        print("Success!\n")
+                        
+                break
+
 def change_bios_setting(_redfishobj, bios_property, property_value):
     #change bios properties in the action settings
     #Alter one ore more BIOS attributes
@@ -714,6 +767,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = "Script to upload and flash NVMe FW")
 
+    parser.add_argument('-n','--net',dest='net_conf',action="store",help="net config 1 to enable",default="0")
     parser.add_argument('-y','--yes',dest='auto_yes',action="store",help="Auto yes 1 to enable",default="0")
     parser.add_argument('-i','--ilo',dest='ilo_address',action="store",help="iLO IP address or FQDN",default="febm-probe.ilo.ps.radcom.co.il")
     parser.add_argument('-u','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
@@ -765,7 +819,13 @@ if __name__ == "__main__":
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
     if args.os:
-        mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+        if args.auto_yes == '1' or yes_or_no("Do you want to install OS?"):
+            mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+        REDFISHOBJ.logout()
+        sys.exit()
+
+    if args.net_conf:
+        mount_network_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE)
         REDFISHOBJ.logout()
         sys.exit()
 
@@ -821,6 +881,7 @@ if __name__ == "__main__":
 
     if args.auto_yes == '1' or yes_or_no("Do you want to install OS?"):
         mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+        
     
     # change_temporary_boot_order(REDFISHOBJ, MEDIA_TYPE)
     # print_SmartArray_Drives(REDFISHOBJ)
