@@ -309,7 +309,7 @@ def create_logicaldrive_body(disks):
     elif len(disks) == 2:
         body["LogicalDrives"].append(create_logicaldrive_json(disks))
     print("\n\nBODY of data dictionary: {}\n".format(json.dumps(body, indent=4)))
-    #body["LogicalDrives"][0]['LegacyBootPriority'] = 'All'
+    # body["LogicalDrives"][0]['LegacyBootPriority'] = 'All'
 
     return body
 
@@ -330,17 +330,14 @@ def createLogicalDrive(_redfishobj):
         totalStorage = 0
         for instance in resource_instances:
             #Use Resource directory to find the relevant URI
-            if 'SmartStorageArrayController' in instance['@odata.type']:
-                # print( "\n\n I FOUND DATA-TYPE with ArrayController\n\n" )
+            if 'SmartStorageArrayController.' in instance['@odata.type']:
+                print( "\n\n I FOUND DATA-TYPE with ArrayController\n\n" )
                 smartstorage_uri = instance['@odata.id']
                 smartstorage_resp = _redfishobj.get(smartstorage_uri).obj
-                if smartstorage_resp.get('Id') == None:
-                    break
-                # sys.stdout.write("Physical Drive URIs for Smart Storage Array Controller " \
-                #    "'%s\' : \n" % smartstorage_resp.get('Id'))
-                PysicalDrives_uri = str(smartstorage_resp.Links['PhysicalDrives']['@odata.id'])
-                print("Phy Drive location: {}".format(PysicalDrives_uri))
-                Pysicaldrives_resp = _redfishobj.get(PysicalDrives_uri)
+                if smartstorage_resp.get('Id') != None:
+                    PysicalDrives_uri = str(smartstorage_resp.Links['PhysicalDrives']['@odata.id'])
+                    print("Phy Drive location: {}".format(PysicalDrives_uri))
+                    Pysicaldrives_resp = _redfishobj.get(PysicalDrives_uri)
                 if len( Pysicaldrives_resp.dict['Members'] )== 0:
                     sys.stderr.write("\tPysical drives are not available for this controller.\n")
                 else:
@@ -350,11 +347,12 @@ def createLogicalDrive(_redfishobj):
                         drive_locations.append(drive_data)
     
                 # drive_ids.append(drive_data["VolumeUniqueIdentifier"])
-            elif 'SmartStorageConfig' in instance['@odata.type']:
-               # print( "\n\n I FOUND DATA-TYPE with SmartStorageConfig\n\n" )
+            elif 'SmartStorageConfig.' in instance['@odata.type']:
+               print( "\n\n I FOUND DATA-TYPE with SmartStorageConfig\n\n" )
+               print(instance['@odata.id'])
                if "smartstorageconfig/settings" in instance['@odata.id']:
                    smartstorage_uri_config = instance['@odata.id']
-                   # print(smartstorage_uri_config)
+                   print(smartstorage_uri_config)
                    # print("uri")
 
         body = create_logicaldrive_body(drive_locations)
@@ -824,7 +822,7 @@ if __name__ == "__main__":
         REDFISHOBJ.logout()
         sys.exit()
 
-    if args.net_conf:
+    if args.net_conf == '1':
         mount_network_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE)
         REDFISHOBJ.logout()
         sys.exit()
