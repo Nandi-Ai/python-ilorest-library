@@ -266,22 +266,22 @@ def create_logicaldrive_json(Disks):
     logicalDrive = dict()
     logicalDrive['DataDrives'] = list()
     numberOfDisks = len(Disks)
-    diskSize = int(Disks[0]["CapacityGB"])
+    # diskSize = init(Disks[0]["CapacityGB"])
     for disk in Disks:
         logicalDrive['DataDrives'].append(disk["Location"])
-        if int(disk["CapacityGB"]) <  diskSize:
-            print("Smaller disk found")
-            diskSize = int(disk["CapacityGB"])
+        #if int(disk["CapacityGB"]) <  diskSize:
+        #    print("Smaller disk found")
+        #    diskSize = int(disk["CapacityGB"])
     if numberOfDisks == 2:
-        totalStorage = diskSize
+        #totalStorage = diskSize
         raid_type = 'Raid1'
     elif numberOfDisks > 3:
-        totalStorage = (numberOfDisks / 2) * diskSize
+        #totalStorage = (numberOfDisks / 2) * diskSize
         raid_type = 'Raid10'
     elif len(Disks) < 2:
         print("ERROR!")
 
-    logicalDrive['CapacityGiB'] = int(totalStorage * 0.9)
+    #logicalDrive['CapacityGiB'] = int(totalStorage)
     logicalDrive['Raid'] = raid_type
     # logicalDrive['StripSizeBytes'] = 262144
     logicalDrive['LogicalDriveName'] = 'RADCOM'+''.join((random.choice(string.digits) for i in range(5)))
@@ -363,7 +363,7 @@ def createLogicalDrive(_redfishobj):
         if resp.status == 200:
             for drive in body['LogicalDrives']:
                 print("Logical Drive: {}".format(drive['LogicalDriveName']))
-                print("Size of the volume is: {} GiB".format(drive['CapacityGiB']))
+                # print("Size of the volume is: {} GiB".format(drive['CapacityGiB']))
                 print("Raid Type: {}".format(drive['Raid']))
                 print("Associated physical drives:")
                 for disk in drive['DataDrives']:
@@ -449,11 +449,15 @@ def power_off_server(_redfishobj, state):
         # error message to see what went wrong
         if resp.status == 400:
             try:
-                print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
-                                 sort_keys=True))
+                error_msg = json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                 sort_keys=True)
+                if 'InvalidOperationForSystemState' in error_msg:
+                    sleep(5)
+                    power_off_server(_redfishobj, 'on')
             except Exception as excp:
                 sys.stderr.write("A response error occurred, unable to access iLO Extended "
                                  "Message Info...")
+ 
         elif resp.status != 200:
             sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
         else:
@@ -745,14 +749,14 @@ def print_SmartArray_Drives(_redfishobj):
         for drive in logical_drives:
             print("Found Logical Drive:\n")
             print("The name of the volume is: {}".format(drive['LogicalDriveName']))
-            print("The size of the volume is - {} MiB\n".format(drive['CapacityMiB']))
+            # print("The size of the volume is - {} MiB\n".format(drive['CapacityMiB']))
             print("There are {} physical disks connected in Raid{}:".format(len(disks), drive['Raid']))
     else:
         print( "Couldn't find any LOGICAL drives." )
 
     if len(disks)!=0:
         for disk in disks:
-            print("Disk - {} , size - {} GB".format(disk["Location"],disk["CapacityGB"]))
+            print("Disk - {}".format(disk["Location"]))
     else:
         print( "Couldn't find PHYISCAL drives.")
 
