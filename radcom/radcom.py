@@ -799,6 +799,12 @@ if __name__ == "__main__":
                 'RedundantPowerSupply': 'BalancedMode', 'PciSlot1Enable': 'HighEfficiencyAuto', \
                  'WorkloadProfile': 'HighPerformanceCompute(HPC)', 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
 
+    print( "ARGS - Net_Conf {}".format( args.net_conf ) )
+    if args.net_conf:
+        mount_network_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE)
+        REDFISHOBJ.logout()
+        sys.exit()
+
     AttributesElements = Att_bios.items()
     for ATTRIBUTE, ATTRIBUTE_VAL in AttributesElements:
         # print("--------------------")
@@ -823,11 +829,6 @@ if __name__ == "__main__":
     if args.os:
         if args.auto_yes == '1' or yes_or_no("Do you want to install OS?"):
             mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
-        REDFISHOBJ.logout()
-        sys.exit()
-
-    if args.net_conf == '1':
-        mount_network_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE)
         REDFISHOBJ.logout()
         sys.exit()
 
