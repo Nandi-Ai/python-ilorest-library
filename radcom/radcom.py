@@ -769,12 +769,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = "Script to upload and flash NVMe FW")
 
-    parser.add_argument('-n','--net',dest='net_conf',action="store",help="net config 1 to enable",default="0")
-    parser.add_argument('-y','--yes',dest='auto_yes',action="store",help="Auto yes 1 to enable",default="0")
-    parser.add_argument('-i','--ilo',dest='ilo_address',action="store",help="iLO IP address or FQDN",default="febm-probe.ilo.ps.radcom.co.il")
-    parser.add_argument('-u','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
-    parser.add_argument('-p','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
-    parser.add_argument('-m','--uri',dest='media_url',action="store",help="HTTP Server URI",default="http://172.29.169.106/CentOS-7-x86_64-Minimal-2009-KS-UEFI-GR.iso")
+    parser.add_argument('-y','--yes',dest='auto_yes',default=True, action='store_true',help="Auto answer yes to delete logical drives and install OS")
+    parser.add_argument('-i','--ilo',dest='ilo_address',action="store",help="iLO IP address or FQDN")
+    parser.add_argument('-U','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
+    parser.add_argument('-P','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
+    parser.add_argument('-u','--uri',dest='url_to_media',action="store",help="HTTP Server URI",default="http://172.29.169.106/CentOS-7-Custom-Min-UEFI-KS-2021-08-11.iso")
+    parser.add_argument('-m','--mount',dest='mount',default=False, action='store_true',help="To mount only iso")
     parser.add_argument('-o','--os',dest='os',help="OS install only",action='store_true')
     parser.add_argument('-d','--drives',dest='logical_drives',action="store_true",help="Get Logical Drives only")
 
@@ -799,9 +799,8 @@ if __name__ == "__main__":
                 'RedundantPowerSupply': 'BalancedMode', 'PciSlot1Enable': 'HighEfficiencyAuto', \
                  'WorkloadProfile': 'HighPerformanceCompute(HPC)', 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
 
-    print( "ARGS - Net_Conf {}".format( args.net_conf ) )
-    if args.net_conf:
-        mount_network_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE)
+    if args.mount:
+        mount_network_media_iso(REDFISHOBJ, args.url_to_media, MEDIA_TYPE)
         REDFISHOBJ.logout()
         sys.exit()
 
@@ -827,8 +826,8 @@ if __name__ == "__main__":
         change_bios_setting(REDFISHOBJ, nic, "Disabled")
 
     if args.os:
-        if args.auto_yes == '1' or yes_or_no("Do you want to install OS?"):
-            mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+        if args.auto_yes or yes_or_no("Do you want to install OS?"):
+            mount_virtual_media_iso(REDFISHOBJ, args.url_to_media, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
         REDFISHOBJ.logout()
         sys.exit()
 
@@ -843,7 +842,7 @@ if __name__ == "__main__":
 
     AreLogicalDrives = get_SmartArray_LogicalDrives(REDFISHOBJ)
     if AreLogicalDrives:
-        if args.auto_yes == '1' or yes_or_no("Do you want to delete and reconfigure Logical Drive?"):
+        if args.auto_yes or yes_or_no("Do you want to delete and reconfigure Logical Drive?"):
             delete_SmartArray_LogicalDrives(REDFISHOBJ)
             print("Waiting for deletion of drives...")
 
@@ -867,7 +866,7 @@ if __name__ == "__main__":
                 print('.')
             print("Logical Drive is created!")
     else:
-        if args.auto_yes == '1' or yes_or_no("Do you want to create and configure new Logical Drive?"):
+        if args.auto_yes or yes_or_no("Do you want to create and configure new Logical Drive?"):
             createLogicalDrive(REDFISHOBJ)
             print("Waiting for Logical drive creation")
             hasVolumes = False
@@ -882,10 +881,9 @@ if __name__ == "__main__":
 
     print('\n')
 
-    if args.auto_yes == '1' or yes_or_no("Do you want to install OS?"):
-        mount_virtual_media_iso(REDFISHOBJ, args.media_url, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
-        
-    
+    if args.auto_yes or yes_or_no("Do you want to install OS?"):
+        mount_virtual_media_iso(REDFISHOBJ, args.url_to_media, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET)
+
     # change_temporary_boot_order(REDFISHOBJ, MEDIA_TYPE)
     # print_SmartArray_Drives(REDFISHOBJ)
     # get_SmartArray_LogicalDrives(REDFISHOBJ)
