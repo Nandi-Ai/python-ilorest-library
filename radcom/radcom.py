@@ -774,7 +774,8 @@ if __name__ == "__main__":
     parser.add_argument('-U','--user',dest='ilo_user',action="store",help="iLO username to login",default="admin")
     parser.add_argument('-P','--password',dest='ilo_pass',action="store",help="iLO password to log in.",default="Radmin1234")
     parser.add_argument('-u','--uri',dest='url_to_media',action="store",help="HTTP Server URI",default="http://172.29.169.106/CentOS-7-Custom-Min-UEFI-KS-2021-08-11.iso")
-    parser.add_argument('-m','--mount',dest='mount',default=False, action='store_true',help="To mount only iso")
+    parser.add_argument('-m','--mount',dest='mount',default=False, action='store_true',help="To mount OS ISO only")
+    parser.add_argument('-n', '--net', dest='net', default=False, action='store_true', help="To mount Networking ISO only")
     parser.add_argument('-o','--os',dest='os',help="OS install only",action='store_true')
     parser.add_argument('-d','--drives',dest='logical_drives',action="store_true",help="Get Logical Drives only")
 
@@ -800,7 +801,12 @@ if __name__ == "__main__":
                  'WorkloadProfile': 'HighPerformanceCompute(HPC)', 'EmbVideoConnection': 'AlwaysEnabled', 'ThermalConfig': 'IncreasedCooling'}
 
     if args.mount:
-        mount_network_media_iso(REDFISHOBJ, args.url_to_media, MEDIA_TYPE)
+        mount_virtual_media_iso(REDFISHOBJ, args.url_to_media, MEDIA_TYPE, BOOT_ON_NEXT_SERVER_RESET )
+        REDFISHOBJ.logout()
+        sys.exit()
+
+    if args.net:
+        mount_network_media_iso(REDFISHOBJ, args.url_to_media, MEDIA_TYPE )
         REDFISHOBJ.logout()
         sys.exit()
 
