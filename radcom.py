@@ -19,15 +19,7 @@ def reset_ilo( _redfishobj ) :
 	if DISABLE_RESOURCE_DIR or not resource_instances :
 		# if we do not have a resource directory or want to force it's non use to find the
 		# relevant URI
-
 		managers_uri = _redfishobj.root.obj[ 'Managers' ][ '@odata.id' ]
-	# managers_response = _redfishobj.get(managers_uri)
-	# managers_members_uri = next(iter(managers_response.obj['Members']))['@odata.id']
-	# data = _redfishobj.get(managers_members_uri)
-	# if data:
-	#     ilo_reboot_uri = data.obj['Actions']['#Manager.Reset']['target']
-	#     print(ilo_reboot_uri)
-
 	else :
 		for instance in resource_instances :
 			# Use Resource directory to find the relevant URI
