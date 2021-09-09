@@ -1,7 +1,0 @@
-jsonpatch
-jsonpath_rw
-jsonpointer
-urllib3
-six
-certifi
-python-ilorest-library==3.2.1

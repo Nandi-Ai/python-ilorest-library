@@ -1,3 +1,0 @@
-certifi
-redfish==3.0.1
-python-ilorest-library==3.2.1

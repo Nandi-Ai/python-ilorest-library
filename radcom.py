@@ -6,7 +6,7 @@ import string
 import sys
 from time import sleep , time
 
-from get_resource_directory import get_resource_directory
+from lib.get_resource_directory import get_resource_directory
 from redfish import RedfishClient
 from redfish.rest.v1 import ServerDownOrUnreachableError
 
@@ -461,9 +461,6 @@ def power_off_server( _redfishobj , state ) :
 			print( "Success!\n" )
 
 
-# print(json.dumps(resp.dict, indent=4, sort_keys=True))
-
-
 def reboot_server( _redfishobj ) :
 	# Reboot a server
 
@@ -612,17 +609,6 @@ def get_SmartArray_EncryptionSettings( _redfishobj , desired_properties ) :
 			if data in desired_properties :
 				sys.stdout.write( "\t %s : %s\n" % (data , smartarraycontrollers[ controller \
 					[ '@odata.id' ] ].get( data )) )
-
-
-def yes_or_no( question ) :
-	while "Answer is invalid" :
-		reply = str( raw_input( question + ' (y/n): ' ) ).lower( ).strip( )
-		if reply[ 0 ] == 'y' or args.auto_yes == '1' :
-			print( "\n" )
-			return True
-		if reply[ 0 ] == 'n' :
-			print( '\n' )
-			return False
 
 
 def get_SmartArray_PhysicalDrives( _redfishobj ) :
