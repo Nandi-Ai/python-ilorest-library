@@ -3,6 +3,7 @@ import json
 import random
 import re
 import string
+import os
 import sys
 from time import sleep , time
 
@@ -751,18 +752,24 @@ if __name__ == "__main__" :
 			'ThermalConfig'        : 'IncreasedCooling'
 	}
 
-	AttributesElements = Bios_settings.items( )
-	for ATTRIBUTE , ATTRIBUTE_VAL in AttributesElements :
-		change_bios_setting( REDFISHOBJ , ATTRIBUTE , ATTRIBUTE_VAL )
+	for key , value in Bios_settings.items( ) :
+		change_bios_setting( REDFISHOBJ , key , value )
+	else :
+		del key , value
 
 	# Disable PXE to all NICS on board
 	Nics = [ ]
+	for k , v in bios_res[ 'Attributes' ].items( ) :
+		if 'NicBoot' in k :
+			Nics.append( k )
 
-	for val , att in bios_res[ 'Attributes' ].items( ) :
-		if re.match( r'^NicBoot*' , val ) :
-			Nics.append( val )
 	for nic in Nics :
 		change_bios_setting( REDFISHOBJ , nic , "Disabled" )
+
+	os.system( f'ilorest login {args.ilo_address} -u admin -p Radmin1234' )
+	os.system( 'ilorest select HpeSecurityService.' )
+	os.system( 'ilorest set SecurityState=HighSecurity --commit' )
+	os.system( 'ilorest logout' )
 
 	AreLogicalDrives = get_SmartArray_LogicalDrives( REDFISHOBJ )
 	if AreLogicalDrives :
