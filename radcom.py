@@ -769,7 +769,8 @@ if __name__ == "__main__" :
 	os.system( f'ilorest login {args.ilo_address} -u admin -p Radmin1234' )
 	os.system( 'ilorest select HpeSecurityService.' )
 	os.system( 'ilorest set SecurityState=HighSecurity --commit' )
-	os.system( 'ilorest logout' )
+
+	sleep( 30 )
 
 	AreLogicalDrives = get_SmartArray_LogicalDrives( REDFISHOBJ )
 	if AreLogicalDrives :
